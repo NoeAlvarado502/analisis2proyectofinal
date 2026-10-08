@@ -1,12 +1,809 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import api from '../api/client';
+import { useAuth } from '../auth/AuthContext';
+import { useToast } from '../components/Toast';
+import DataTable from '../components/DataTable';
+import Modal from '../components/Modal';
+import FormField from '../components/FormField';
+import PermissionGate from '../components/PermissionGate';
+
+const NIVELES_CANTIDAD = [1, 3, 6, 12, 25, 50, 100, 500, 1000, 10000];
 
 export default function ProductosPage() {
+  const { can } = useAuth();
+  const toast = useToast();
+
+  const canManageProductos = can('productos.gestionar');
+
+  const [productos, setProductos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [marcas, setMarcas] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Filters & Pagination
+  const [q, setQ] = useState('');
+  const [filterCategoria, setFilterCategoria] = useState('');
+  const [filterEstado, setFilterEstado] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+
+  // Modal Create / Edit Producto
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('create');
+  const [selectedProducto, setSelectedProducto] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+
+  // Product Form State
+  const [formData, setFormData] = useState({
+    codigo_sku: '',
+    nombre: '',
+    descripcion: '',
+    id_categoria: '',
+    id_marca: '',
+    stock_minimo: 5,
+    edad_minima_meses: ''
+  });
+
+  // Tiers Form State: { [cantidad]: string_precio }
+  const [escalasState, setEscalasState] = useState({
+    1: '',
+    3: '',
+    6: '',
+    12: '',
+    25: '',
+    50: '',
+    100: '',
+    500: '',
+    1000: '',
+    10000: ''
+  });
+
+  // Modals for Quick Add Category & Brand
+  const [quickCatOpen, setQuickCatOpen] = useState(false);
+  const [quickCatNombre, setQuickCatNombre] = useState('');
+  const [quickCatDesc, setQuickCatDesc] = useState('');
+
+  const [quickMarcaOpen, setQuickMarcaOpen] = useState(false);
+  const [quickMarcaNombre, setQuickMarcaNombre] = useState('');
+
+  // Load Catalogs (Categorías y Marcas)
+  const loadCatalogos = useCallback(async () => {
+    try {
+      const [resCat, resMar] = await Promise.all([
+        api.get('/categorias'),
+        api.get('/marcas')
+      ]);
+      if (resCat?.data) setCategorias(resCat.data);
+      if (resMar?.data) setMarcas(resMar.data);
+    } catch (err) {
+      console.error('Error cargando catálogos:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCatalogos();
+  }, [loadCatalogos]);
+
+  // Fetch Products
+  const fetchProductos = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = { page, limit: 10 };
+      if (q.trim()) params.q = q.trim();
+      if (filterCategoria) params.id_categoria = filterCategoria;
+      if (filterEstado !== '') params.activo = filterEstado;
+
+      const res = await api.get('/productos', { params });
+      if (res?.data) {
+        setProductos(res.data);
+        if (res.meta) {
+          setTotalPages(res.meta.totalPages || 1);
+          setTotalRecords(res.meta.total || 0);
+        }
+      }
+    } catch (err) {
+      toast.error(err.message || 'Error al cargar productos');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, q, filterCategoria, filterEstado, toast]);
+
+  useEffect(() => {
+    fetchProductos();
+  }, [fetchProductos]);
+
+  // Open Create Modal
+  const handleOpenCreate = () => {
+    setModalMode('create');
+    setSelectedProducto(null);
+    setFormData({
+      codigo_sku: '',
+      nombre: '',
+      descripcion: '',
+      id_categoria: categorias.length > 0 ? categorias[0].id_categoria : '',
+      id_marca: '',
+      stock_minimo: 5,
+      edad_minima_meses: ''
+    });
+
+    const initialEscalas = {};
+    NIVELES_CANTIDAD.forEach((c) => {
+      initialEscalas[c] = '';
+    });
+    setEscalasState(initialEscalas);
+    setFormErrors({});
+    setModalOpen(true);
+  };
+
+  // Open Edit Modal (fetches product detail with current tiers)
+  const handleOpenEdit = async (prod) => {
+    setModalMode('edit');
+    setSelectedProducto(prod);
+    setFormErrors({});
+
+    try {
+      const res = await api.get(`/productos/${prod.id_producto}`);
+      if (res?.data) {
+        const p = res.data;
+        setFormData({
+          codigo_sku: p.codigo_sku,
+          nombre: p.nombre,
+          descripcion: p.descripcion || '',
+          id_categoria: p.id_categoria,
+          id_marca: p.id_marca || '',
+          stock_minimo: p.stock_minimo,
+          edad_minima_meses: p.edad_minima_meses ?? ''
+        });
+
+        const tiersMap = {};
+        NIVELES_CANTIDAD.forEach((c) => {
+          tiersMap[c] = '';
+        });
+        if (Array.isArray(p.escalas)) {
+          p.escalas.forEach((esc) => {
+            tiersMap[esc.cantidad_minima] = String(esc.precio_unitario);
+          });
+        }
+        setEscalasState(tiersMap);
+        setModalOpen(true);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Error al cargar detalles del producto');
+    }
+  };
+
+  // Client-side validation of price monotonicity
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.nombre.trim()) errors.nombre = 'El nombre es requerido';
+    if (modalMode === 'create' && !formData.codigo_sku.trim()) errors.codigo_sku = 'El SKU es requerido';
+    if (!formData.id_categoria) errors.id_categoria = 'La categoría es requerida';
+
+    // Tier 1 is mandatory
+    const retailPrice = parseFloat(escalasState[1]);
+    if (isNaN(retailPrice) || retailPrice <= 0) {
+      errors.escalas = 'El Nivel 1 (Precio Menudeo) es obligatorio y debe ser mayor a 0.00';
+    } else {
+      // Validate non-increasing price monotonicity
+      let lastPrice = retailPrice;
+      for (const cant of NIVELES_CANTIDAD) {
+        if (cant === 1) continue;
+        const val = escalasState[cant];
+        if (val !== '' && val !== null && val !== undefined) {
+          const currentPrice = parseFloat(val);
+          if (isNaN(currentPrice) || currentPrice <= 0) {
+            errors.escalas = `El precio para escala de ${cant} unidades debe ser mayor a 0.00`;
+            break;
+          }
+          if (currentPrice > lastPrice) {
+            errors.escalas = `Regla de negocio: El precio de escala (${cant} uds: Q${currentPrice}) no puede ser mayor al precio del nivel anterior (Q${lastPrice})`;
+            break;
+          }
+          lastPrice = currentPrice;
+        }
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Submit Product Form
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setSubmitting(true);
+    try {
+      // Build active scales array
+      const escalasPayload = [];
+      NIVELES_CANTIDAD.forEach((cant) => {
+        const val = escalasState[cant];
+        if (val !== '' && val !== null && val !== undefined) {
+          escalasPayload.push({
+            cantidad_minima: cant,
+            precio_unitario: parseFloat(val)
+          });
+        }
+      });
+
+      const payload = {
+        nombre: formData.nombre.trim(),
+        descripcion: formData.descripcion.trim() || null,
+        id_categoria: Number(formData.id_categoria),
+        id_marca: formData.id_marca ? Number(formData.id_marca) : null,
+        stock_minimo: Number(formData.stock_minimo),
+        edad_minima_meses: formData.edad_minima_meses !== '' ? Number(formData.edad_minima_meses) : null,
+        escalas: escalasPayload
+      };
+
+      if (modalMode === 'create') {
+        payload.codigo_sku = formData.codigo_sku.trim().toUpperCase();
+        await api.post('/productos', payload);
+        toast.success(`Producto ${payload.codigo_sku} creado con escalas exitosamente`);
+      } else {
+        await api.put(`/productos/${selectedProducto.id_producto}`, payload);
+        toast.success('Producto y escalas actualizados exitosamente');
+      }
+
+      setModalOpen(false);
+      fetchProductos();
+    } catch (err) {
+      if (err.details && typeof err.details === 'object') {
+        const fieldErrors = {};
+        Object.entries(err.details).forEach(([key, val]) => {
+          fieldErrors[key] = Array.isArray(val) ? val.join(', ') : val;
+        });
+        setFormErrors(fieldErrors);
+      } else {
+        toast.error(err.message || 'Error al guardar el producto');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Toggle Estado Producto
+  const handleToggleEstado = async (prod) => {
+    const actionName = prod.activo ? 'inactivar' : 'activar';
+    if (!window.confirm(`¿Seguro que deseas ${actionName} el producto "${prod.nombre}" (${prod.codigo_sku})?`)) {
+      return;
+    }
+
+    try {
+      await api.patch(`/productos/${prod.id_producto}/estado`);
+      toast.success(`Producto ${prod.activo ? 'inactivado' : 'reactivado'} correctamente`);
+      fetchProductos();
+    } catch (err) {
+      toast.error(err.message || `No se pudo ${actionName} el producto`);
+    }
+  };
+
+  // Quick Create Category
+  const handleCreateCategoria = async (e) => {
+    e.preventDefault();
+    if (!quickCatNombre.trim()) return;
+
+    try {
+      const res = await api.post('/categorias', {
+        nombre: quickCatNombre.trim(),
+        descripcion: quickCatDesc.trim() || null
+      });
+      toast.success(`Categoría "${quickCatNombre}" creada`);
+      setQuickCatOpen(false);
+      setQuickCatNombre('');
+      setQuickCatDesc('');
+      await loadCatalogos();
+      if (res?.data?.id_categoria) {
+        setFormData((prev) => ({ ...prev, id_categoria: res.data.id_categoria }));
+      }
+    } catch (err) {
+      toast.error(err.message || 'Error creando categoría');
+    }
+  };
+
+  // Quick Create Brand
+  const handleCreateMarca = async (e) => {
+    e.preventDefault();
+    if (!quickMarcaNombre.trim()) return;
+
+    try {
+      const res = await api.post('/marcas', {
+        nombre: quickMarcaNombre.trim()
+      });
+      toast.success(`Marca "${quickMarcaNombre}" creada`);
+      setQuickMarcaOpen(false);
+      setQuickMarcaNombre('');
+      await loadCatalogos();
+      if (res?.data?.id_marca) {
+        setFormData((prev) => ({ ...prev, id_marca: res.data.id_marca }));
+      }
+    } catch (err) {
+      toast.error(err.message || 'Error creando marca');
+    }
+  };
+
+  // Columns definition
+  const columns = [
+    {
+      header: 'SKU / Código',
+      key: 'codigo_sku',
+      render: (row) => <code>{row.codigo_sku}</code>
+    },
+    {
+      header: 'Producto',
+      key: 'nombre',
+      render: (row) => (
+        <div>
+          <div style={{ fontWeight: 600 }}>{row.nombre}</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+            Categoría: {row.categoria} {row.marca ? `· Marca: ${row.marca}` : ''}
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Precio Menudeo (Nivel 1)',
+      key: 'precio_menudeo',
+      render: (row) => (
+        <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>
+          Q{Number(row.precio_menudeo ?? 0).toFixed(2)}
+        </span>
+      )
+    },
+    {
+      header: 'Stock Actual',
+      key: 'stock_actual',
+      render: (row) => {
+        const isLow = Number(row.stock_actual ?? 0) <= Number(row.stock_minimo ?? 0);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+              {row.stock_actual ?? 0}
+            </span>
+            {isLow && (
+              <span className="badge badge-danger" title={`Stock mínimo: ${row.stock_minimo}`}>
+                ⚠️ Bajo
+              </span>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      header: 'Stock Mínimo',
+      key: 'stock_minimo',
+      render: (row) => <span>{row.stock_minimo}</span>
+    },
+    {
+      header: 'Estado',
+      key: 'activo',
+      render: (row) => (
+        <span className={`badge ${row.activo ? 'badge-success' : 'badge-danger'}`}>
+          {row.activo ? 'Activo' : 'Inactivo'}
+        </span>
+      )
+    }
+  ];
+
+  if (canManageProductos) {
+    columns.push({
+      header: 'Acciones',
+      key: 'acciones',
+      render: (row) => (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => handleOpenEdit(row)}
+            title="Editar producto y escalas"
+          >
+            ✏️ Editar
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm ${row.activo ? 'btn-danger' : 'btn-secondary'}`}
+            onClick={() => handleToggleEstado(row)}
+            title={row.activo ? 'Inactivar producto (RN04)' : 'Reactivar producto'}
+          >
+            {row.activo ? '🚫 Inactivar' : '✓ Reactivar'}
+          </button>
+        </div>
+      )
+    });
+  }
+
   return (
-    <div className="card">
-      <div className="card-header">
-        <h2 className="card-title">Catálogo de Productos</h2>
+    <div>
+      {/* Header */}
+      <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '1.6rem' }}>Catálogo de Juguetes y Precios por Volumen</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            Consulta de stock en tiempo real y configuración de escalas de precio al por mayor y menor.
+          </p>
+        </div>
+
+        <PermissionGate permission="productos.gestionar">
+          <button type="button" className="btn btn-primary" onClick={handleOpenCreate}>
+            + Nuevo Producto
+          </button>
+        </PermissionGate>
       </div>
-      <p style={{ color: 'var(--text-muted)' }}>Módulo de productos (Parte 7).</p>
+
+      {/* Filter Toolbar */}
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '220px' }}>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Buscar por SKU o nombre..."
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+
+          <div style={{ width: '200px' }}>
+            <select
+              className="form-control"
+              value={filterCategoria}
+              onChange={(e) => {
+                setFilterCategoria(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">Todas las Categorías</option>
+              {categorias.map((c) => (
+                <option key={c.id_categoria} value={c.id_categoria}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ width: '160px' }}>
+            <select
+              className="form-control"
+              value={filterEstado}
+              onChange={(e) => {
+                setFilterEstado(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">Todos los estados</option>
+              <option value="1">Solo Activos</option>
+              <option value="0">Solo Inactivos</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <DataTable
+        columns={columns}
+        data={productos}
+        loading={loading}
+        emptyMessage="No se encontraron productos en el catálogo"
+        pagination={{
+          page,
+          totalPages,
+          totalRecords
+        }}
+        onPageChange={(newPage) => setPage(newPage)}
+      />
+
+      {/* Modal Crear / Editar Producto */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        size="lg"
+        title={modalMode === 'create' ? 'Registrar Producto y Escalas' : `Editar Producto: ${formData.codigo_sku}`}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setModalOpen(false)}
+              disabled={submitting}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleFormSubmit}
+              disabled={submitting}
+            >
+              {submitting ? 'Guardando...' : (modalMode === 'create' ? 'Crear Producto' : 'Guardar Cambios')}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleFormSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+            <FormField
+              label="Código SKU"
+              name="codigo_sku"
+              error={formErrors.codigo_sku}
+              helpText={modalMode === 'edit' ? 'Inmutable (RN05)' : 'Código único en mayúsculas'}
+              required
+            >
+              <input
+                type="text"
+                id="codigo_sku"
+                className={`form-control ${formErrors.codigo_sku ? 'has-error' : ''}`}
+                value={formData.codigo_sku}
+                onChange={(e) => setFormData({ ...formData, codigo_sku: e.target.value.toUpperCase() })}
+                placeholder="JUG-004"
+                disabled={modalMode === 'edit'}
+                required
+              />
+            </FormField>
+
+            <FormField label="Nombre del Juguete" name="nombre" error={formErrors.nombre} required>
+              <input
+                type="text"
+                id="nombre"
+                className={`form-control ${formErrors.nombre ? 'has-error' : ''}`}
+                value={formData.nombre}
+                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                placeholder="Ej. Set de Bloques Creativos 100 Piezas"
+                required
+              />
+            </FormField>
+          </div>
+
+          <FormField label="Descripción" name="descripcion" error={formErrors.descripcion}>
+            <textarea
+              id="descripcion"
+              className="form-control"
+              rows={2}
+              value={formData.descripcion}
+              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+              placeholder="Material, contenido, advertencias..."
+            />
+          </FormField>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+            {/* Categoría con botón crear */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <label className="form-label" style={{ margin: 0 }}>Categoría *</label>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setQuickCatOpen(true)}
+                  style={{ padding: '0 4px', fontSize: '0.75rem', color: 'var(--primary)' }}
+                >
+                  + Nueva
+                </button>
+              </div>
+              <select
+                id="id_categoria"
+                className={`form-control ${formErrors.id_categoria ? 'has-error' : ''}`}
+                value={formData.id_categoria}
+                onChange={(e) => setFormData({ ...formData, id_categoria: e.target.value })}
+                required
+              >
+                <option value="">Selecciona una categoría</option>
+                {categorias.map((c) => (
+                  <option key={c.id_categoria} value={c.id_categoria}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+              {formErrors.id_categoria && <span className="form-error">{formErrors.id_categoria}</span>}
+            </div>
+
+            {/* Marca con botón crear */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <label className="form-label" style={{ margin: 0 }}>Marca (Opcional)</label>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setQuickMarcaOpen(true)}
+                  style={{ padding: '0 4px', fontSize: '0.75rem', color: 'var(--primary)' }}
+                >
+                  + Nueva
+                </button>
+              </div>
+              <select
+                id="id_marca"
+                className="form-control"
+                value={formData.id_marca}
+                onChange={(e) => setFormData({ ...formData, id_marca: e.target.value })}
+              >
+                <option value="">Sin marca específica</option>
+                {marcas.map((m) => (
+                  <option key={m.id_marca} value={m.id_marca}>
+                    {m.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+            <FormField label="Stock Mínimo (Alerta)" name="stock_minimo" error={formErrors.stock_minimo} required>
+              <input
+                type="number"
+                min="0"
+                id="stock_minimo"
+                className="form-control"
+                value={formData.stock_minimo}
+                onChange={(e) => setFormData({ ...formData, stock_minimo: e.target.value })}
+                required
+              />
+            </FormField>
+
+            <FormField label="Edad Mínima (Meses)" name="edad_minima_meses" error={formErrors.edad_minima_meses}>
+              <input
+                type="number"
+                min="0"
+                id="edad_minima_meses"
+                className="form-control"
+                placeholder="Ej. 36 (3 años)"
+                value={formData.edad_minima_meses}
+                onChange={(e) => setFormData({ ...formData, edad_minima_meses: e.target.value })}
+              />
+            </FormField>
+          </div>
+
+          {/* Escalas de Precios por Cantidad */}
+          <div
+            style={{
+              marginTop: '1.75rem',
+              padding: '1.25rem',
+              backgroundColor: 'var(--bg-surface-elevated)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-subtle)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <div>
+                <h4 style={{ fontSize: '1rem', color: 'var(--text-main)' }}>
+                  Escalas de Precio por Volumen (10 Niveles)
+                </h4>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  El Nivel 1 (1 ud) es obligatorio. Los precios por unidad deben ser decrecientes o iguales según mayor volumen.
+                </p>
+              </div>
+            </div>
+
+            {formErrors.escalas && (
+              <div
+                style={{
+                  padding: '0.65rem 0.85rem',
+                  backgroundColor: 'var(--danger-bg)',
+                  border: '1px solid var(--danger-border)',
+                  color: 'var(--danger-text)',
+                  fontSize: '0.82rem',
+                  borderRadius: 'var(--radius-sm)',
+                  marginBottom: '1rem'
+                }}
+              >
+                ⚠️ {formErrors.escalas}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                gap: '0.75rem'
+              }}
+            >
+              {NIVELES_CANTIDAD.map((cant) => (
+                <div
+                  key={cant}
+                  style={{
+                    padding: '0.6rem',
+                    backgroundColor: 'var(--bg-surface)',
+                    borderRadius: 'var(--radius-sm)',
+                    border: cant === 1 ? '1px solid var(--primary)' : '1px solid var(--border-subtle)'
+                  }}
+                >
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: cant === 1 ? 'var(--primary)' : 'var(--text-dim)', marginBottom: '0.25rem' }}>
+                    {cant === 1 ? '1 ud (Menudeo)*' : `≥ ${cant} uds`}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginRight: '4px' }}>Q</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      className="form-control"
+                      style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
+                      placeholder={cant === 1 ? '0.00' : 'Opcional'}
+                      value={escalasState[cant] ?? ''}
+                      onChange={(e) =>
+                        setEscalasState({ ...escalasState, [cant]: e.target.value })
+                      }
+                      required={cant === 1}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Quick Create Category */}
+      <Modal
+        isOpen={quickCatOpen}
+        onClose={() => setQuickCatOpen(false)}
+        title="Crear Nueva Categoría"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setQuickCatOpen(false)}>
+              Cancelar
+            </button>
+            <button type="button" className="btn btn-primary" onClick={handleCreateCategoria}>
+              Guardar Categoría
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleCreateCategoria}>
+          <FormField label="Nombre de la Categoría" name="quick_cat" required>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Ej. Juegos de Mesa"
+              value={quickCatNombre}
+              onChange={(e) => setQuickCatNombre(e.target.value)}
+              required
+            />
+          </FormField>
+          <FormField label="Descripción" name="quick_cat_desc">
+            <textarea
+              className="form-control"
+              rows={2}
+              placeholder="Descripción opcional..."
+              value={quickCatDesc}
+              onChange={(e) => setQuickCatDesc(e.target.value)}
+            />
+          </FormField>
+        </form>
+      </Modal>
+
+      {/* Modal Quick Create Brand */}
+      <Modal
+        isOpen={quickMarcaOpen}
+        onClose={() => setQuickMarcaOpen(false)}
+        title="Crear Nueva Marca"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setQuickMarcaOpen(false)}>
+              Cancelar
+            </button>
+            <button type="button" className="btn btn-primary" onClick={handleCreateMarca}>
+              Guardar Marca
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleCreateMarca}>
+          <FormField label="Nombre de la Marca" name="quick_brand" required>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Ej. LEGO, Mattel, Hasbro"
+              value={quickMarcaNombre}
+              onChange={(e) => setQuickMarcaNombre(e.target.value)}
+              required
+            />
+          </FormField>
+        </form>
+      </Modal>
     </div>
   );
 }
