@@ -5,6 +5,7 @@ import cors from 'cors';
 import { pool } from './db/pool.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { successResponse } from './utils/response.js';
+import { authRouter } from './modules/auth/auth.routes.js';
 
 export const app = express();
 
@@ -31,6 +32,17 @@ app.get('/api/health', async (req, res, next) => {
     next(err);
   }
 });
+
+// Rutas de módulos
+app.use('/api/auth', authRouter);
+
+// Ruta de prueba para permisos en tests
+if (process.env.NODE_ENV === 'test') {
+  const { requireAuth, requirePermission } = await import('./middleware/auth.js');
+  app.get('/api/test/solo-supervisores', requireAuth, requirePermission('pedidos.autorizar_descuento'), (req, res) => {
+    res.json({ ok: true });
+  });
+}
 
 // Manejador de 404
 app.use(notFoundHandler);
