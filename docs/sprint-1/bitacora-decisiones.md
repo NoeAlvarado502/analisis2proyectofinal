@@ -1,0 +1,9 @@
+# Bitácora de Decisiones Técnicas y Funcionales - Sprint 1
+
+| Fecha | Situación | Decisión tomada | Motivo | Resultado |
+| :--- | :--- | :--- | :--- | :--- |
+| 07/10/2026 | El script SQL original contenía el carácter residual `雕` en `fn_escala_id` y `trg_escalas_bi`. | Corregir la referencia de tabla a `escalas_precio` en el DDL. | Evitar error de sintaxis en el motor MySQL/MariaDB. | Compilación y carga de funciones/triggers sin errores. |
+| 07/10/2026 | El script `reset` fallaba si la BD ya existía por duplicidad de triggers y datos. | Agregar `DROP DATABASE IF EXISTS jugueteria_db;` al inicio del script DDL. | Permitir reseteo e inicialización 100% limpia e idempotente. | Reseteo automatizado funcional en bash y PowerShell. |
+| 07/10/2026 | En la semilla de `compras_detalle`, la sentencia `INSERT INTO ... SELECT ... FROM compras` disparaba el error MySQL 1442 (la tabla `compras` era mutada por el trigger de recálculo mientras estaba en el `FROM` de la consulta externa). | Aislar el ID en la variable `@id_compra_demo` antes del `INSERT` para que la consulta externa no lea `compras`. | MySQL prohíbe actualizar una tabla en un trigger invocado por una sentencia que lee esa misma tabla. | Inserción de compras semilla correcta, cálculo de total y recepción con generación automática de entrada en inventario. |
+| 07/10/2026 | Entorno de desarrollo sobre Windows PowerShell. | Generar `database/reset.ps1` además de `database/reset.sh`. | Soporte nativo para desarrolladores en Windows sin requerir emuladores de bash. | Reseteo instantáneo desde PowerShell. |
+| 07/10/2026 | Selección de stack backend para gestión de transacciones y triggers. | Uso de Node.js con `mysql2/promise` directo (sin ORM). | Control granular de la variable de sesión `@usuario_actual` requerida por los triggers de auditoría y mayor claridad para la defensa académica. | Arquitectura ligera y transparente. |
