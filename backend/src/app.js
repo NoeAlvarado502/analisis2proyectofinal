@@ -10,6 +10,9 @@ import { usuariosRouter } from './modules/usuarios/usuarios.routes.js';
 import { rolesRouter } from './modules/roles/roles.routes.js';
 import { permisosRouter } from './modules/roles/permisos.routes.js';
 import { clientesRouter } from './modules/clientes/clientes.routes.js';
+import { productosRouter } from './modules/productos/productos.routes.js';
+import { categoriasRouter } from './modules/productos/categorias.routes.js';
+import { marcasRouter } from './modules/productos/marcas.routes.js';
 
 export const app = express();
 
@@ -43,6 +46,9 @@ app.use('/api/usuarios', usuariosRouter);
 app.use('/api/roles', rolesRouter);
 app.use('/api/permisos', permisosRouter);
 app.use('/api/clientes', clientesRouter);
+app.use('/api/productos', productosRouter);
+app.use('/api/categorias', categoriasRouter);
+app.use('/api/marcas', marcasRouter);
 
 // Ruta de prueba para permisos en tests
 if (process.env.NODE_ENV === 'test') {
