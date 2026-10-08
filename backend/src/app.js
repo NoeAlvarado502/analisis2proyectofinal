@@ -6,6 +6,9 @@ import { pool } from './db/pool.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { successResponse } from './utils/response.js';
 import { authRouter } from './modules/auth/auth.routes.js';
+import { usuariosRouter } from './modules/usuarios/usuarios.routes.js';
+import { rolesRouter } from './modules/roles/roles.routes.js';
+import { permisosRouter } from './modules/roles/permisos.routes.js';
 
 export const app = express();
 
@@ -35,6 +38,9 @@ app.get('/api/health', async (req, res, next) => {
 
 // Rutas de módulos
 app.use('/api/auth', authRouter);
+app.use('/api/usuarios', usuariosRouter);
+app.use('/api/roles', rolesRouter);
+app.use('/api/permisos', permisosRouter);
 
 // Ruta de prueba para permisos en tests
 if (process.env.NODE_ENV === 'test') {
