@@ -149,12 +149,12 @@ export default function RolesPage() {
       <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
-            <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-purple)', display: 'inline-block' }} />
-            <h1 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '999px', backgroundColor: 'var(--toy-purple)', display: 'inline-block' }} />
+            <h1 className="font-display" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
               Roles y Permisos del Sistema
             </h1>
           </div>
-          <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600 }}>
+          <p style={{ color: 'var(--toy-muted)', fontSize: '0.84rem', fontWeight: 600 }}>
             Administración de perfiles operativos. Configura las acciones permitidas para cada tipo de cuenta en la juguetería.
           </p>
         </div>
@@ -184,15 +184,15 @@ export default function RolesPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '290px 1fr', gap: '1.5rem', alignItems: 'start' }}>
         {/* Left: Role Selector List */}
-        <div className="card" style={{ padding: '1.2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '1rem' }}>
+        <div className="card" style={{ padding: '1.1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.85rem' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
-            <h3 className="font-display" style={{ fontSize: '0.95rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--toy-muted)', letterSpacing: '0.05em' }}>
+            <h3 className="font-display" style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--toy-muted)', letterSpacing: '0.06em' }}>
               Perfiles Definidos
             </h3>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
             {roles.map((r) => {
               const isSelected = selectedRole?.id_rol === r.id_rol;
               return (
@@ -207,28 +207,35 @@ export default function RolesPage() {
                     setSelectedRole(r);
                   }}
                   style={{
-                    padding: '0.95rem 1.1rem',
-                    borderRadius: '18px',
+                    padding: '0.85rem 1rem',
+                    borderRadius: '16px',
                     backgroundColor: isSelected ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.45)',
                     border: isSelected ? '2px solid var(--toy-deep-blue)' : '2px solid var(--toy-border)',
-                    boxShadow: isSelected ? '0 4px 0 var(--toy-deep-blue)' : 'none',
+                    boxShadow: isSelected ? '0 3px 0 var(--toy-deep-blue)' : 'none',
                     cursor: 'pointer',
                     transition: 'all 0.12s ease',
                     transform: isSelected ? 'translateY(-2px)' : 'none'
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong className="font-display" style={{ color: isSelected ? '#FFFFFF' : 'var(--toy-ink)', fontSize: '1rem', fontWeight: 700 }}>
+                    <strong className="font-display" style={{ color: isSelected ? '#FFFFFF' : 'var(--toy-ink)', fontSize: '0.92rem', fontWeight: 700 }}>
                       {r.nombre}
                     </strong>
                     <span
-                      className={`badge ${isSelected ? 'badge-warning' : 'badge-primary'}`}
-                      style={{ fontSize: '0.7rem' }}
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '999px',
+                        backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.28)' : 'rgba(25, 168, 232, 0.12)',
+                        color: isSelected ? '#FFFFFF' : 'var(--toy-deep-blue)',
+                        border: isSelected ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(25, 168, 232, 0.25)'
+                      }}
                     >
                       {r.total_permisos ?? 0}
                     </span>
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: isSelected ? 'rgba(255, 255, 255, 0.92)' : 'var(--toy-muted)', marginTop: '0.35rem', fontWeight: 600 }}>
+                  <p style={{ fontSize: '0.78rem', color: isSelected ? 'rgba(255, 255, 255, 0.92)' : 'var(--toy-muted)', marginTop: '0.3rem', fontWeight: 600, lineHeight: 1.35 }}>
                     {r.descripcion || 'Sin descripción'}
                   </p>
                 </div>
@@ -239,19 +246,19 @@ export default function RolesPage() {
 
         {/* Right: Permission Matrix by Module */}
         <div className="card">
-          <div className="card-header" style={{ marginBottom: '1.4rem' }}>
+          <div className="card-header" style={{ marginBottom: '1.25rem' }}>
             <div>
-              <h2 className="card-title">
+              <h2 className="card-title" style={{ fontSize: '1.15rem' }}>
                 Permisos del perfil: <span style={{ color: 'var(--toy-blue)' }}>{selectedRole?.nombre}</span>
               </h2>
-              <p style={{ color: 'var(--toy-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
+              <p style={{ color: 'var(--toy-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
                 {canManageRoles
                   ? 'Marca o desmarca casillas para habilitar o restringir funciones en este perfil.'
                   : 'Modo solo lectura (sin permisos de edición).'}
               </p>
             </div>
 
-            <span className="badge badge-purple" style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }}>
+            <span className="badge badge-purple" style={{ fontSize: '0.72rem', padding: '0.35rem 0.8rem' }}>
               {rolePermissions.length} permisos activos
             </span>
           </div>
@@ -278,7 +285,7 @@ export default function RolesPage() {
                     {/* Module Title Header */}
                     <div
                       style={{
-                        padding: '0.85rem 1.25rem',
+                        padding: '0.75rem 1.15rem',
                         backgroundColor: '#FAF5EB',
                         borderBottom: '2px solid var(--toy-border)',
                         display: 'flex',
@@ -286,7 +293,7 @@ export default function RolesPage() {
                         justifyContent: 'space-between'
                       }}
                     >
-                      <strong className="font-display" style={{ textTransform: 'capitalize', color: 'var(--toy-deep-blue)', fontSize: '1rem', fontWeight: 700 }}>
+                      <strong className="font-display" style={{ textTransform: 'capitalize', color: 'var(--toy-deep-blue)', fontSize: '0.88rem', fontWeight: 700 }}>
                         Módulo: {modulo}
                       </strong>
 
@@ -295,7 +302,7 @@ export default function RolesPage() {
                           type="button"
                           className="btn btn-ghost btn-sm"
                           onClick={() => handleToggleModule(perms)}
-                          style={{ fontSize: '0.76rem', fontWeight: 800 }}
+                          style={{ fontSize: '0.72rem', fontWeight: 800, height: '28px', padding: '0.2rem 0.65rem' }}
                         >
                           {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
                         </button>
@@ -341,7 +348,7 @@ export default function RolesPage() {
                               style={{ marginTop: '0.2rem', accentColor: 'var(--toy-blue)', width: '16px', height: '16px' }}
                             />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--toy-ink)', lineHeight: 1.35 }}>
+                              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--toy-ink)', lineHeight: 1.35 }}>
                                 {p.descripcion}
                               </div>
                               {isProtectedAdmin && (

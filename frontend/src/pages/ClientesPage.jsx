@@ -244,12 +244,12 @@ export default function ClientesPage() {
       <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
-            <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-green)', display: 'inline-block' }} />
-            <h1 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '999px', backgroundColor: 'var(--toy-green)', display: 'inline-block' }} />
+            <h1 className="font-display" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
               Directorio de Clientes &amp; Facturación
             </h1>
           </div>
-          <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600 }}>
+          <p style={{ color: 'var(--toy-muted)', fontSize: '0.84rem', fontWeight: 600 }}>
             Registro fiscal de clientes mayoristas y minoristas, compatible con ventas al Consumidor Final (CF).
           </p>
         </div>

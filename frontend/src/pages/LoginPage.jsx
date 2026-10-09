@@ -53,71 +53,54 @@ export default function LoginPage() {
       }}
     >
       <div
-        className="toy-cardboard-pack"
+        className="card"
         style={{
           width: '100%',
-          maxWidth: '440px',
+          maxWidth: '430px',
+          padding: '2.2rem 2rem',
+          borderRadius: '24px',
           backgroundColor: '#FFFFFF',
-          border: '2px solid var(--toy-border)'
+          border: '2px solid var(--toy-border)',
+          boxShadow: '0 12px 32px rgba(58, 42, 34, 0.1), 0 2px 6px rgba(58, 42, 34, 0.04)'
         }}
       >
-        {/* Packaging Header with Checkered Pattern & Euro Hanger */}
-        <div className="bg-checker-blue" style={{ padding: '1.4rem 1.2rem 1.2rem', textAlign: 'center', color: '#FFFFFF' }}>
-          <div className="euro-hanger-punch" style={{ marginBottom: '0.85rem' }} />
-          
+        {/* Brand Header */}
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <div
             style={{
-              width: '52px',
-              height: '52px',
-              margin: '0 auto 0.65rem',
+              width: '50px',
+              height: '50px',
+              margin: '0 auto 0.85rem',
               borderRadius: '16px',
-              backgroundColor: '#FFFFFF',
-              color: 'var(--toy-blue)',
+              background: 'linear-gradient(135deg, var(--toy-blue), var(--toy-deep-blue))',
+              color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)'
+              boxShadow: '0 4px 12px rgba(8, 123, 181, 0.3)'
             }}
           >
-            <Package size={28} strokeWidth={2.4} />
+            <Package size={26} strokeWidth={2.4} />
           </div>
 
-          <h1 className="font-display" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
-            JUGUETERÍA QUETZAL
+          <h1 className="font-display" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--toy-ink)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+            JUGUETERÍA <span style={{ color: 'var(--toy-blue)' }}>QUETZAL</span>
           </h1>
 
-          <div style={{ marginTop: '0.4rem' }}>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                backgroundColor: 'rgba(0, 0, 0, 0.22)',
-                color: '#FFFFFF',
-                fontSize: '0.72rem',
-                fontWeight: 800,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                padding: '0.25rem 0.75rem',
-                borderRadius: '999px',
-                border: '1px solid rgba(255, 255, 255, 0.3)'
-              }}
-            >
-              Sistema de Gestión de Inventario
-            </span>
-          </div>
+          <p style={{ color: 'var(--toy-muted)', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: '0.25rem' }}>
+            Sistema de Gestión
+          </p>
         </div>
 
-        {/* Card Body */}
-        <div style={{ padding: '2rem 1.8rem 1.8rem' }}>
-          <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
-            <h2 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--toy-ink)' }}>
-              Acceso al Sistema
-            </h2>
-            <p style={{ color: 'var(--toy-muted)', fontSize: '0.86rem', fontWeight: 600, marginTop: '2px' }}>
-              Ingresa tus credenciales para gestionar el inventario
-            </p>
-          </div>
+        {/* Section Intro */}
+        <div style={{ textAlign: 'center', marginBottom: '1.25rem', paddingBottom: '0.9rem', borderBottom: '1.5px solid var(--toy-border-light)' }}>
+          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--toy-ink)' }}>
+            Acceso al Sistema
+          </h2>
+          <p style={{ color: 'var(--toy-muted)', fontSize: '0.82rem', fontWeight: 600, marginTop: '2px' }}>
+            Ingresa tus credenciales para continuar
+          </p>
+        </div>
 
           {errorMsg && (
             <div
@@ -225,6 +208,5 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

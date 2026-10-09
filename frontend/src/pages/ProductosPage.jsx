@@ -437,12 +437,12 @@ export default function ProductosPage() {
       <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
-            <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
-            <h1 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
+            <h1 className="font-display" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
               Catálogo de Juguetes &amp; Precios por Volumen
             </h1>
           </div>
-          <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600 }}>
+          <p style={{ color: 'var(--toy-muted)', fontSize: '0.84rem', fontWeight: 600 }}>
             Control de inventario en tiempo real y configuración de escalas de precio al por mayor y menor.
           </p>
         </div>
