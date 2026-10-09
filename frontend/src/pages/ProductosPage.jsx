@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { PackagePlus, Pencil, EyeOff, Eye, AlertTriangle, AlertCircle, Plus } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
@@ -364,8 +365,12 @@ export default function ProductosPage() {
               {row.stock_actual ?? 0}
             </span>
             {isLow && (
-              <span className="badge badge-danger" title={`Stock mínimo: ${row.stock_minimo}`}>
-                ⚠️ Bajo
+              <span
+                className="badge badge-danger"
+                title={`Stock mínimo: ${row.stock_minimo}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+              >
+                <AlertTriangle size={12} /> Bajo
               </span>
             )}
           </div>
@@ -399,16 +404,26 @@ export default function ProductosPage() {
             className="btn btn-secondary btn-sm"
             onClick={() => handleOpenEdit(row)}
             title="Editar producto y escalas"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
           >
-            ✏️ Editar
+            <Pencil size={13} /> Editar
           </button>
           <button
             type="button"
             className={`btn btn-sm ${row.activo ? 'btn-danger' : 'btn-secondary'}`}
             onClick={() => handleToggleEstado(row)}
             title={row.activo ? 'Inactivar producto (RN04)' : 'Reactivar producto'}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
           >
-            {row.activo ? '🚫 Inactivar' : '✓ Reactivar'}
+            {row.activo ? (
+              <>
+                <EyeOff size={13} /> Inactivar
+              </>
+            ) : (
+              <>
+                <Eye size={13} /> Reactivar
+              </>
+            )}
           </button>
         </div>
       )
@@ -427,8 +442,13 @@ export default function ProductosPage() {
         </div>
 
         <PermissionGate permission="productos.gestionar">
-          <button type="button" className="btn btn-primary" onClick={handleOpenCreate}>
-            + Nuevo Producto
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleOpenCreate}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+          >
+            <PackagePlus size={16} /> Nuevo Producto
           </button>
         </PermissionGate>
       </div>
@@ -579,9 +599,9 @@ export default function ProductosPage() {
                   type="button"
                   className="btn btn-ghost btn-sm"
                   onClick={() => setQuickCatOpen(true)}
-                  style={{ padding: '0 4px', fontSize: '0.75rem', color: 'var(--primary)' }}
+                  style={{ padding: '0 6px', fontSize: '0.75rem', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                 >
-                  + Nueva
+                  <Plus size={12} /> Nueva
                 </button>
               </div>
               <select
@@ -609,9 +629,9 @@ export default function ProductosPage() {
                   type="button"
                   className="btn btn-ghost btn-sm"
                   onClick={() => setQuickMarcaOpen(true)}
-                  style={{ padding: '0 4px', fontSize: '0.75rem', color: 'var(--primary)' }}
+                  style={{ padding: '0 6px', fontSize: '0.75rem', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                 >
-                  + Nueva
+                  <Plus size={12} /> Nueva
                 </button>
               </div>
               <select
@@ -686,10 +706,13 @@ export default function ProductosPage() {
                   color: 'var(--danger-text)',
                   fontSize: '0.82rem',
                   borderRadius: 'var(--radius-sm)',
-                  marginBottom: '1rem'
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem'
                 }}
               >
-                ⚠️ {formErrors.escalas}
+                <AlertCircle size={15} /> {formErrors.escalas}
               </div>
             )}
 

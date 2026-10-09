@@ -1,4 +1,5 @@
 import React from 'react';
+import { LogOut, User } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 
 export default function Navbar() {
@@ -29,7 +30,7 @@ export default function Navbar() {
   return (
     <header className="top-navbar">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+        <span style={{ fontSize: '0.9rem', color: 'var(--color-muted)', fontWeight: 600 }}>
           Sistema de Gestión de Pedidos, Inventario y Ventas
         </span>
       </div>
@@ -39,11 +40,11 @@ export default function Navbar() {
           <div className="user-avatar">{initials}</div>
           <div className="user-info">
             <span className="user-name">{user?.nombre_completo}</span>
-            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <span className={`badge ${getRoleBadgeClass(user?.rol)}`}>
                 {user?.rol || 'Sin Rol'}
               </span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-dim)', fontWeight: 500 }}>
                 {user?.email}
               </span>
             </div>
@@ -56,7 +57,7 @@ export default function Navbar() {
           className="btn btn-secondary btn-sm"
           title="Cerrar sesión"
         >
-          <span>🚪</span>
+          <LogOut size={16} strokeWidth={2} />
           <span>Cerrar sesión</span>
         </button>
       </div>

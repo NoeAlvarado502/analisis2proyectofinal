@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { UserPlus, Pencil, UserX, UserCheck } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
@@ -211,16 +212,26 @@ export default function ClientesPage() {
             className="btn btn-secondary btn-sm"
             onClick={() => handleOpenEdit(row)}
             title="Editar cliente"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
           >
-            ✏️ Editar
+            <Pencil size={13} /> Editar
           </button>
           <button
             type="button"
             className={`btn btn-sm ${row.activo ? 'btn-danger' : 'btn-secondary'}`}
             onClick={() => handleToggleEstado(row)}
             title={row.activo ? 'Desactivar cliente' : 'Activar cliente'}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
           >
-            {row.activo ? '🚫 Desactivar' : '✓ Activar'}
+            {row.activo ? (
+              <>
+                <UserX size={13} /> Desactivar
+              </>
+            ) : (
+              <>
+                <UserCheck size={13} /> Activar
+              </>
+            )}
           </button>
         </div>
       )
@@ -239,8 +250,13 @@ export default function ClientesPage() {
         </div>
 
         <PermissionGate permission="clientes.gestionar">
-          <button type="button" className="btn btn-primary" onClick={handleOpenCreate}>
-            + Nuevo Cliente
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleOpenCreate}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+          >
+            <UserPlus size={16} /> Nuevo Cliente
           </button>
         </PermissionGate>
       </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { UserPlus, Pencil, KeyRound, UserX, UserCheck } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
@@ -257,7 +258,8 @@ export default function UsuariosPage() {
               onClick={() => handleOpenEdit(row)}
               title="Editar usuario"
             >
-              ✏️ Editar
+              <Pencil size={13} strokeWidth={2.2} />
+              <span>Editar</span>
             </button>
             <button
               type="button"
@@ -265,7 +267,8 @@ export default function UsuariosPage() {
               onClick={() => handleOpenReset(row)}
               title="Restablecer clave"
             >
-              🔑 Clave
+              <KeyRound size={13} strokeWidth={2.2} />
+              <span>Clave</span>
             </button>
             <button
               type="button"
@@ -274,7 +277,17 @@ export default function UsuariosPage() {
               onClick={() => handleToggleEstado(row)}
               title={isSelf ? 'No puedes desactivar tu propia cuenta' : (row.activo ? 'Desactivar' : 'Activar')}
             >
-              {row.activo ? '🚫 Desactivar' : '✓ Activar'}
+              {row.activo ? (
+                <>
+                  <UserX size={13} strokeWidth={2.2} />
+                  <span>Desactivar</span>
+                </>
+              ) : (
+                <>
+                  <UserCheck size={13} strokeWidth={2.2} />
+                  <span>Activar</span>
+                </>
+              )}
             </button>
           </div>
         );
@@ -295,7 +308,8 @@ export default function UsuariosPage() {
 
         <PermissionGate permission="usuarios.gestionar">
           <button type="button" className="btn btn-primary" onClick={handleOpenCreate}>
-            + Nuevo Usuario
+            <UserPlus size={16} strokeWidth={2.2} />
+            <span>Nuevo Usuario</span>
           </button>
         </PermissionGate>
       </div>

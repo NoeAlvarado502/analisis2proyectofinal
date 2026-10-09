@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Package, AlertCircle, ShieldCheck, Search, UserCheck, LogIn } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import FormField from '../components/FormField';
 
@@ -45,8 +46,8 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: `radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.15), transparent 50%),
-                     radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.08), transparent 40%),
+        background: `radial-gradient(circle at 10% 20%, rgba(25, 168, 232, 0.12), transparent 40%),
+                     radial-gradient(circle at 90% 80%, rgba(255, 157, 46, 0.12), transparent 40%),
                      var(--bg-app)`,
         padding: '1.5rem'
       }}
@@ -55,30 +56,34 @@ export default function LoginPage() {
         className="card"
         style={{
           width: '100%',
-          maxWidth: '440px',
-          boxShadow: 'var(--shadow-lg), 0 0 35px rgba(99, 102, 241, 0.12)',
-          border: '1px solid rgba(255, 255, 255, 0.12)'
+          maxWidth: '460px',
+          boxShadow: 'var(--shadow-lg), 0 0 35px rgba(25, 168, 232, 0.08)',
+          border: '1.5px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-xl)',
+          padding: '2.4rem 2rem'
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div
             style={{
-              width: '54px',
-              height: '54px',
-              margin: '0 auto 1rem',
+              width: '60px',
+              height: '60px',
+              margin: '0 auto 1.15rem',
               borderRadius: 'var(--radius-lg)',
-              background: 'linear-gradient(135deg, var(--primary), var(--accent-purple))',
+              background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-strong))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '1.75rem',
-              boxShadow: '0 4px 18px var(--primary-glow)'
+              color: '#ffffff',
+              boxShadow: 'var(--shadow-primary)'
             }}
           >
-            🧸
+            <Package size={32} strokeWidth={2.2} />
           </div>
-          <h1 style={{ fontSize: '1.6rem', marginBottom: '0.35rem' }}>Juguetería DB</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+          <h1 style={{ fontSize: '1.8rem', marginBottom: '0.35rem', color: 'var(--color-ink)' }}>
+            Juguetería DB
+          </h1>
+          <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
             Sistema de Gestión · Análisis II (Sprint 1)
           </p>
         </div>
@@ -86,19 +91,20 @@ export default function LoginPage() {
         {errorMsg && (
           <div
             style={{
-              padding: '0.75rem 1rem',
+              padding: '0.85rem 1.1rem',
               borderRadius: 'var(--radius-md)',
               backgroundColor: 'var(--danger-bg)',
-              border: '1px solid var(--danger-border)',
+              border: '1.5px solid var(--danger-border)',
               color: 'var(--danger-text)',
-              fontSize: '0.85rem',
-              marginBottom: '1.25rem',
+              fontSize: '0.88rem',
+              marginBottom: '1.4rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.65rem',
+              fontWeight: 600
             }}
           >
-            <span>⚠️</span>
+            <AlertCircle size={18} strokeWidth={2.2} />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -133,36 +139,38 @@ export default function LoginPage() {
           <button
             type="submit"
             className="btn btn-primary"
-            style={{ width: '100%', marginTop: '0.75rem', padding: '0.75rem' }}
+            style={{ width: '100%', marginTop: '0.85rem', height: '46px' }}
             disabled={loading}
           >
-            {loading ? 'Validando credenciales...' : 'Iniciar Sesión'}
+            <LogIn size={18} strokeWidth={2.2} />
+            <span>{loading ? 'Validando credenciales...' : 'Iniciar Sesión'}</span>
           </button>
         </form>
 
         {/* Demo Fast Logins */}
-        <div style={{ marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-subtle)' }}>
+        <div style={{ marginTop: '2.2rem', paddingTop: '1.4rem', borderTop: '1.5px solid var(--border-subtle)' }}>
           <p
             style={{
-              fontSize: '0.75rem',
+              fontSize: '0.76rem',
               textTransform: 'uppercase',
-              color: 'var(--text-dim)',
-              letterSpacing: '0.05em',
-              fontWeight: 700,
-              marginBottom: '0.75rem',
+              color: 'var(--color-muted)',
+              letterSpacing: '0.06em',
+              fontWeight: 800,
+              marginBottom: '0.85rem',
               textAlign: 'center'
             }}
           >
             Acceso Rápido para Demostración / Docente
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem' }}>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
               onClick={() => handleQuickFill('admin@jugueteria.local')}
               title="admin@jugueteria.local"
             >
-              👑 Admin
+              <ShieldCheck size={14} strokeWidth={2.2} />
+              <span>Admin</span>
             </button>
             <button
               type="button"
@@ -170,7 +178,8 @@ export default function LoginPage() {
               onClick={() => handleQuickFill('supervisor@jugueteria.local')}
               title="supervisor@jugueteria.local"
             >
-              🔍 Superv.
+              <Search size={14} strokeWidth={2.2} />
+              <span>Superv.</span>
             </button>
             <button
               type="button"
@@ -178,7 +187,8 @@ export default function LoginPage() {
               onClick={() => handleQuickFill('operador@jugueteria.local')}
               title="operador@jugueteria.local"
             >
-              💼 Operador
+              <UserCheck size={14} strokeWidth={2.2} />
+              <span>Operador</span>
             </button>
           </div>
         </div>

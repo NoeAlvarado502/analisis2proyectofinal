@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowRight, ShieldCheck, CheckCircle2, Shield } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { MENU_ITEMS } from '../components/Sidebar';
 
@@ -18,46 +19,47 @@ export default function HomePage() {
       <div
         className="card"
         style={{
-          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.08))',
-          borderColor: 'rgba(99, 102, 241, 0.3)',
-          marginBottom: '2rem',
-          padding: '2rem'
+          background: 'linear-gradient(135deg, rgba(255, 244, 221, 0.95), rgba(25, 168, 232, 0.12))',
+          borderColor: 'rgba(25, 168, 232, 0.25)',
+          marginBottom: '2.2rem',
+          padding: '2.2rem'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.25rem' }}>
           <div>
             <span
               style={{
                 fontSize: '0.8rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                color: 'var(--accent-cyan)',
-                fontWeight: 700
+                color: 'var(--color-primary-strong)',
+                fontWeight: 800
               }}
             >
               Entrega 1 · Sprint 1 (20%)
             </span>
-            <h1 style={{ fontSize: '1.85rem', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
-              ¡Hola, {user?.nombre_completo || 'Usuario'}! 👋
+            <h1 style={{ fontSize: '2rem', marginTop: '0.35rem', marginBottom: '0.5rem', color: 'var(--color-ink)' }}>
+              Bienvenido, {user?.nombre_completo || 'Usuario'}
             </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', maxWidth: '650px' }}>
-              Has iniciado sesión con el rol <strong style={{ color: 'var(--text-main)' }}>{user?.rol}</strong>. A continuación se presentan los módulos a los que tienes acceso según la matriz de permisos de seguridad RBAC.
+            <p style={{ color: 'var(--color-muted)', fontSize: '0.96rem', maxWidth: '680px', fontWeight: 500 }}>
+              Has iniciado sesión con el rol <strong style={{ color: 'var(--color-ink)' }}>{user?.rol}</strong>. A continuación se presentan los módulos habilitados según la matriz de seguridad RBAC.
             </p>
           </div>
 
           <div
             style={{
-              padding: '1rem 1.5rem',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              textAlign: 'center'
+              padding: '1.1rem 1.6rem',
+              borderRadius: 'var(--radius-lg)',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid var(--border-subtle)',
+              textAlign: 'center',
+              boxShadow: 'var(--shadow-sm)'
             }}
           >
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>
-              Tu Rol Activo
+            <div style={{ fontSize: '0.74rem', color: 'var(--color-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              Perfil Operativo
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--color-primary-strong)', marginTop: '0.2rem' }}>
               {user?.rol}
             </div>
           </div>
@@ -66,38 +68,58 @@ export default function HomePage() {
 
       {/* Permitted Modules Grid */}
       <div>
-        <h2 style={{ fontSize: '1.35rem', marginBottom: '0.5rem' }}>Módulos Habilitados</h2>
-        <p style={{ color: 'var(--text-dim)', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-          Selecciona un módulo para comenzar a operar.
+        <h2 style={{ fontSize: '1.4rem', marginBottom: '0.4rem', color: 'var(--color-ink)' }}>Módulos Habilitados</h2>
+        <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem', marginBottom: '1.4rem' }}>
+          Selecciona una sección para acceder a la gestión correspondiente.
         </p>
 
         <div className="module-grid">
-          {permittedModules.map((item) => (
-            <div
-              key={item.path}
-              className="module-card"
-              onClick={() => navigate(item.path)}
-            >
-              <div>
-                <div style={{ fontSize: '2.25rem', marginBottom: '0.75rem' }}>{item.icon}</div>
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.35rem' }}>{item.label}</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: '1.4' }}>
-                  {item.description}
-                </p>
-              </div>
+          {permittedModules.map((item) => {
+            const Icon = item.IconComponent;
+            return (
+              <div
+                key={item.path}
+                className="module-card"
+                onClick={() => navigate(item.path)}
+              >
+                <div>
+                  <div
+                    style={{
+                      width: '52px',
+                      height: '52px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'rgba(25, 168, 232, 0.12)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--color-primary-strong)',
+                      marginBottom: '1.1rem'
+                    }}
+                  >
+                    <Icon size={26} strokeWidth={2} />
+                  </div>
+                  <h3 style={{ fontSize: '1.24rem', marginBottom: '0.4rem', color: 'var(--color-ink)' }}>
+                    {item.label}
+                  </h3>
+                  <p style={{ color: 'var(--color-muted)', fontSize: '0.88rem', lineHeight: '1.45', fontWeight: 500 }}>
+                    {item.description}
+                  </p>
+                </div>
 
-              <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
-                  Abrir módulo →
-                </span>
-                {item.permission && (
-                  <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>
-                    {item.permission}
+                <div style={{ marginTop: '1.6rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span>Abrir módulo</span>
+                    <ArrowRight size={15} strokeWidth={2.2} />
                   </span>
-                )}
+                  {item.permission && (
+                    <span className="badge badge-info" style={{ fontSize: '0.68rem' }}>
+                      {item.permission}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -105,27 +127,30 @@ export default function HomePage() {
       <div
         className="card"
         style={{
-          marginTop: '2.5rem',
-          backgroundColor: 'var(--bg-surface)',
+          marginTop: '2.6rem',
+          backgroundColor: '#ffffff',
           borderColor: 'var(--border-subtle)'
         }}
       >
         <div className="card-header">
-          <h3 className="card-title">Reglas de Negocio en Ejecución (Motor de Base de Datos)</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <Shield size={20} color="var(--color-green)" strokeWidth={2.2} />
+            <h3 className="card-title">Reglas de Negocio en Ejecución (Motor MariaDB/MySQL)</h3>
+          </div>
           <span className="badge badge-success">Auditado & Protegido</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-          <div style={{ padding: '0.75rem', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)' }}>
-            <strong style={{ color: 'var(--accent-cyan)' }}>RN01:</strong> No sobreventa (bloqueo por inventario).
+          <div style={{ padding: '0.9rem', background: '#FCF8F0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+            <strong style={{ color: 'var(--color-primary-strong)' }}>RN01:</strong> Control estricto de inventario (no sobreventa).
           </div>
-          <div style={{ padding: '0.75rem', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)' }}>
-            <strong style={{ color: 'var(--accent-cyan)' }}>RN04:</strong> Inactivación lógica en lugar de DELETE.
+          <div style={{ padding: '0.9rem', background: '#FCF8F0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+            <strong style={{ color: 'var(--color-primary-strong)' }}>RN04:</strong> Inactivación lógica en lugar de borrado físico.
           </div>
-          <div style={{ padding: '0.75rem', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)' }}>
-            <strong style={{ color: 'var(--accent-cyan)' }}>RN05:</strong> Correo y SKU únicos e inmutables.
+          <div style={{ padding: '0.9rem', background: '#FCF8F0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+            <strong style={{ color: 'var(--color-primary-strong)' }}>RN05:</strong> Correo y código SKU únicos e inmutables.
           </div>
-          <div style={{ padding: '0.75rem', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)' }}>
-            <strong style={{ color: 'var(--accent-cyan)' }}>RBAC:</strong> Trazabilidad mediante variable @usuario_actual.
+          <div style={{ padding: '0.9rem', background: '#FCF8F0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+            <strong style={{ color: 'var(--color-primary-strong)' }}>RBAC:</strong> Trazabilidad auditable mediante variable @usuario_actual.
           </div>
         </div>
       </div>

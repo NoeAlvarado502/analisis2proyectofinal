@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Save, Check, ShieldAlert } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
@@ -160,8 +161,19 @@ export default function RolesPage() {
             className="btn btn-primary"
             onClick={handleSavePermissions}
             disabled={saving || !hasChanges}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
           >
-            {saving ? 'Guardando...' : hasChanges ? '💾 Guardar Permisos*' : '✓ Sin Cambios Pendientes'}
+            {saving ? (
+              'Guardando...'
+            ) : hasChanges ? (
+              <>
+                <Save size={16} /> Guardar Permisos
+              </>
+            ) : (
+              <>
+                <Check size={16} /> Sin Cambios Pendientes
+              </>
+            )}
           </button>
         )}
       </div>
@@ -321,8 +333,8 @@ export default function RolesPage() {
                                 {p.descripcion}
                               </div>
                               {isProtectedAdmin && (
-                                <div style={{ fontSize: '0.65rem', color: 'var(--warning-text)', marginTop: '2px' }}>
-                                  ⚠️ Privilegio protegido del Administrador
+                                <div style={{ fontSize: '0.65rem', color: 'var(--warning-text)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <ShieldAlert size={12} /> Privilegio protegido del Administrador
                                 </div>
                               )}
                             </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { PackageOpen, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 
 export default function DataTable({
   columns = [],
@@ -19,13 +20,25 @@ export default function DataTable({
         <div className="table-toolbar">
           <div className="search-input-wrapper">
             {onSearchChange && (
-              <input
-                type="text"
-                className="form-control"
-                placeholder={searchPlaceholder}
-                value={searchValue}
-                onChange={(e) => onSearchChange(e.target.value)}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Search
+                  size={18}
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    color: 'var(--color-dim)',
+                    pointerEvents: 'none'
+                  }}
+                />
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ paddingLeft: '38px' }}
+                  placeholder={searchPlaceholder}
+                  value={searchValue}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                />
+              </div>
             )}
           </div>
           {actions && <div>{actions}</div>}
@@ -48,24 +61,26 @@ export default function DataTable({
             {loading ? (
               <tr>
                 <td colSpan={columns.length} className="empty-state">
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.65rem' }}>
                     <div style={{
-                      width: '18px',
-                      height: '18px',
-                      border: '2px solid var(--text-dim)',
-                      borderTopColor: 'var(--primary)',
+                      width: '20px',
+                      height: '20px',
+                      border: '2.5px solid rgba(58, 42, 34, 0.15)',
+                      borderTopColor: 'var(--color-primary)',
                       borderRadius: '50%',
                       animation: 'spin 0.8s linear infinite'
                     }} />
-                    <span>Cargando datos...</span>
+                    <span style={{ fontWeight: 600 }}>Cargando información...</span>
                   </div>
                 </td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="empty-state">
-                  <p style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>📦</p>
-                  <p>{emptyMessage}</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <PackageOpen size={36} color="var(--color-dim)" strokeWidth={1.75} />
+                    <p style={{ fontWeight: 600 }}>{emptyMessage}</p>
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -95,7 +110,8 @@ export default function DataTable({
                 disabled={pagination.page <= 1 || loading}
                 onClick={() => onPageChange(pagination.page - 1)}
               >
-                ← Anterior
+                <ChevronLeft size={16} strokeWidth={2.2} />
+                <span>Anterior</span>
               </button>
               <button
                 type="button"
@@ -103,7 +119,8 @@ export default function DataTable({
                 disabled={pagination.page >= pagination.totalPages || loading}
                 onClick={() => onPageChange(pagination.page + 1)}
               >
-                Siguiente →
+                <span>Siguiente</span>
+                <ChevronRight size={16} strokeWidth={2.2} />
               </button>
             </div>
           </div>
