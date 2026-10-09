@@ -23,7 +23,7 @@ export const MENU_ITEMS = [
     label: 'Roles y Permisos',
     IconComponent: ShieldCheck,
     permission: 'roles.gestionar',
-    description: 'Control de accesos y matriz de privilegios'
+    description: 'Configuración de perfiles y permisos de usuario'
   },
   {
     path: '/clientes',

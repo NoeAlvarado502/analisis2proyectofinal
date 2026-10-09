@@ -26,7 +26,7 @@ export default function AppRoutes() {
         <Route path="/" element={<Navigate to="/inicio" replace />} />
         <Route path="/inicio" element={<HomePage />} />
 
-        {/* Granular RBAC Protected Routes */}
+        {/* Protected Routes by Permission */}
         <Route
           path="/usuarios"
           element={

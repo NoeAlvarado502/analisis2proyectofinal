@@ -42,7 +42,7 @@ export default function HomePage() {
               Bienvenido, {user?.nombre_completo || 'Usuario'}
             </h1>
             <p style={{ color: 'var(--color-muted)', fontSize: '0.96rem', maxWidth: '680px', fontWeight: 500 }}>
-              Has iniciado sesión con el rol <strong style={{ color: 'var(--color-ink)' }}>{user?.rol}</strong>. A continuación se presentan los módulos habilitados según la matriz de seguridad.
+              Has iniciado sesión con el rol <strong style={{ color: 'var(--color-ink)' }}>{user?.rol}</strong>. A continuación se presentan los módulos habilitados para tu cuenta.
             </p>
           </div>
 

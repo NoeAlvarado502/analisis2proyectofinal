@@ -148,9 +148,9 @@ export default function RolesPage() {
       {/* Header */}
       <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.6rem' }}>Roles y Matriz de Privilegios</h1>
+          <h1 style={{ fontSize: '1.6rem' }}>Roles y Permisos</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Control de acceso granular basado en roles (RBAC). Define qué acciones puede realizar cada perfil.
+            Administración de perfiles de usuario. Configura las acciones permitidas para cada tipo de cuenta en el sistema.
           </p>
         </div>
 
@@ -229,12 +229,12 @@ export default function RolesPage() {
           <div className="card-header">
             <div>
               <h2 className="card-title">
-                Matriz de Permisos: <span style={{ color: 'var(--primary)' }}>{selectedRole?.nombre}</span>
+                Permisos del rol: <span style={{ color: 'var(--primary)' }}>{selectedRole?.nombre}</span>
               </h2>
               <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>
                 {canManageRoles
-                  ? 'Marca o desmarca casillas para modificar los privilegios del rol.'
-                  : 'Modo solo lectura (no tienes permiso roles.gestionar).'}
+                  ? 'Marca o desmarca casillas para habilitar o deshabilitar funciones en este perfil.'
+                  : 'Modo solo lectura (sin permisos de edición).'}
               </p>
             </div>
 
@@ -244,7 +244,7 @@ export default function RolesPage() {
           </div>
 
           {loading ? (
-            <div className="empty-state">Cargando matriz de permisos...</div>
+            <div className="empty-state">Cargando permisos...</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {Object.entries(allPermissionsByModule).map(([modulo, perms]) => {
