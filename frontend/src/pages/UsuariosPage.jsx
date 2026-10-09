@@ -220,9 +220,9 @@ export default function UsuariosPage() {
       render: (row) => {
         const badgeClass =
           row.rol === 'Administrador'
-            ? 'badge-primary'
+            ? 'badge-purple'
             : row.rol === 'Supervisor'
-            ? 'badge-info'
+            ? 'badge-primary'
             : 'badge-success';
         return <span className={`badge ${badgeClass}`}>{row.rol}</span>;
       }
@@ -240,7 +240,7 @@ export default function UsuariosPage() {
       header: 'Último Acceso',
       key: 'ultimo_login',
       render: (row) => (
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <span style={{ fontSize: '0.82rem', color: 'var(--toy-muted)', fontWeight: 700 }}>
           {row.ultimo_login ? new Date(row.ultimo_login).toLocaleString('es-GT') : 'Nunca'}
         </span>
       )
@@ -258,7 +258,7 @@ export default function UsuariosPage() {
               onClick={() => handleOpenEdit(row)}
               title="Editar usuario"
             >
-              <Pencil size={13} strokeWidth={2.2} />
+              <Pencil size={13} strokeWidth={2.4} />
               <span>Editar</span>
             </button>
             <button
@@ -267,7 +267,7 @@ export default function UsuariosPage() {
               onClick={() => handleOpenReset(row)}
               title="Restablecer clave"
             >
-              <KeyRound size={13} strokeWidth={2.2} />
+              <KeyRound size={13} strokeWidth={2.4} />
               <span>Clave</span>
             </button>
             <button
@@ -279,12 +279,12 @@ export default function UsuariosPage() {
             >
               {row.activo ? (
                 <>
-                  <UserX size={13} strokeWidth={2.2} />
+                  <UserX size={13} strokeWidth={2.4} />
                   <span>Desactivar</span>
                 </>
               ) : (
                 <>
-                  <UserCheck size={13} strokeWidth={2.2} />
+                  <UserCheck size={13} strokeWidth={2.4} />
                   <span>Activar</span>
                 </>
               )}
@@ -300,15 +300,20 @@ export default function UsuariosPage() {
       {/* Header */}
       <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.6rem' }}>Gestión de Personal y Cuentas</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Control de usuarios del sistema, asignación de roles y estados operativos.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
+            <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
+            <h1 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+              Gestión de Personal &amp; Cuentas
+            </h1>
+          </div>
+          <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600 }}>
+            Control de usuarios del sistema, asignación de roles operativos y estados de acceso.
           </p>
         </div>
 
         <PermissionGate permission="usuarios.gestionar">
-          <button type="button" className="btn btn-primary" onClick={handleOpenCreate}>
-            <UserPlus size={16} strokeWidth={2.2} />
+          <button type="button" className="btn btn-toy-orange" onClick={handleOpenCreate}>
+            <UserPlus size={16} strokeWidth={2.4} />
             <span>Nuevo Usuario</span>
           </button>
         </PermissionGate>

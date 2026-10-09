@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PackagePlus, Pencil, EyeOff, Eye, AlertTriangle, AlertCircle, Plus } from 'lucide-react';
+import { PackagePlus, Pencil, EyeOff, Eye, AlertTriangle, AlertCircle, Plus, Boxes, List, Package, Sparkles } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
@@ -20,6 +20,7 @@ export default function ProductosPage() {
   const [categorias, setCategorias] = useState([]);
   const [marcas, setMarcas] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState('blister'); // 'blister' | 'table'
 
   // Filters & Pagination
   const [q, setQ] = useState('');
@@ -349,7 +350,7 @@ export default function ProductosPage() {
       header: 'Precio Menudeo (Nivel 1)',
       key: 'precio_menudeo',
       render: (row) => (
-        <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>
+        <span style={{ fontWeight: 800, color: 'var(--toy-deep-blue)' }}>
           Q{Number(row.precio_menudeo ?? 0).toFixed(2)}
         </span>
       )
@@ -361,7 +362,7 @@ export default function ProductosPage() {
         const isLow = Number(row.stock_actual ?? 0) <= Number(row.stock_minimo ?? 0);
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+            <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>
               {row.stock_actual ?? 0}
             </span>
             {isLow && (
@@ -370,7 +371,7 @@ export default function ProductosPage() {
                 title={`Stock mínimo: ${row.stock_minimo}`}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
               >
-                <AlertTriangle size={12} /> Bajo
+                <AlertTriangle size={12} strokeWidth={2.4} /> Bajo
               </span>
             )}
           </div>
@@ -380,7 +381,7 @@ export default function ProductosPage() {
     {
       header: 'Stock Mínimo',
       key: 'stock_minimo',
-      render: (row) => <span>{row.stock_minimo}</span>
+      render: (row) => <span style={{ fontWeight: 700 }}>{row.stock_minimo}</span>
     },
     {
       header: 'Estado',
@@ -406,7 +407,7 @@ export default function ProductosPage() {
             title="Editar producto y escalas"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
           >
-            <Pencil size={13} /> Editar
+            <Pencil size={13} strokeWidth={2.4} /> Editar
           </button>
           <button
             type="button"
@@ -417,11 +418,11 @@ export default function ProductosPage() {
           >
             {row.activo ? (
               <>
-                <EyeOff size={13} /> Inactivar
+                <EyeOff size={13} strokeWidth={2.4} /> Inactivar
               </>
             ) : (
               <>
-                <Eye size={13} /> Reactivar
+                <Eye size={13} strokeWidth={2.4} /> Reactivar
               </>
             )}
           </button>
@@ -432,35 +433,139 @@ export default function ProductosPage() {
 
   return (
     <div>
-      {/* Header */}
+      {/* Page Header */}
       <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.6rem' }}>Catálogo de Juguetes y Precios por Volumen</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Consulta de stock en tiempo real y configuración de escalas de precio al por mayor y menor.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
+            <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-orange)', display: 'inline-block' }} />
+            <h1 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+              Catálogo de Juguetes &amp; Precios por Volumen
+            </h1>
+          </div>
+          <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600 }}>
+            Control de inventario en tiempo real y configuración de escalas de precio al por mayor y menor.
           </p>
         </div>
 
         <PermissionGate permission="productos.gestionar">
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-toy-orange"
             onClick={handleOpenCreate}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
           >
-            <PackagePlus size={16} /> Nuevo Producto
+            <PackagePlus size={16} strokeWidth={2.4} />
+            <span>Nuevo Producto</span>
           </button>
         </PermissionGate>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* Filter Toolbar & View Switcher */}
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1.2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+          
+          {/* Category Chips Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => { setFilterCategoria(''); setPage(1); }}
+              style={{
+                padding: '0.45rem 1rem',
+                borderRadius: '999px',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                border: '2px solid',
+                cursor: 'pointer',
+                backgroundColor: filterCategoria === '' ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.7)',
+                color: filterCategoria === '' ? '#FFFFFF' : 'var(--toy-ink)',
+                borderColor: filterCategoria === '' ? 'var(--toy-blue)' : 'var(--toy-border)',
+                boxShadow: filterCategoria === '' ? '0 2px 6px rgba(25, 168, 232, 0.3)' : 'none',
+                transition: 'all 0.12s ease'
+              }}
+            >
+              Todas las Categorías
+            </button>
+            {categorias.map((c) => {
+              const isActive = String(filterCategoria) === String(c.id_categoria);
+              return (
+                <button
+                  key={c.id_categoria}
+                  type="button"
+                  onClick={() => { setFilterCategoria(c.id_categoria); setPage(1); }}
+                  style={{
+                    padding: '0.45rem 1rem',
+                    borderRadius: '999px',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    border: '2px solid',
+                    cursor: 'pointer',
+                    backgroundColor: isActive ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.7)',
+                    color: isActive ? '#FFFFFF' : 'var(--toy-ink)',
+                    borderColor: isActive ? 'var(--toy-blue)' : 'var(--toy-border)',
+                    boxShadow: isActive ? '0 2px 6px rgba(25, 168, 232, 0.3)' : 'none',
+                    transition: 'all 0.12s ease'
+                  }}
+                >
+                  {c.nombre}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* View Mode Switcher */}
+          <div
+            style={{
+              backgroundColor: 'rgba(255, 244, 221, 0.85)',
+              padding: '0.35rem',
+              borderRadius: '999px',
+              border: '2px solid var(--toy-border)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem'
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('blister')}
+              className={viewMode === 'blister' ? 'btn-toy-primary btn-sm' : 'btn-ghost btn-sm'}
+              style={{
+                borderRadius: '999px',
+                height: '32px',
+                padding: '0 0.85rem',
+                fontSize: '0.78rem',
+                border: 'none',
+                boxShadow: viewMode === 'blister' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
+              }}
+            >
+              <Boxes size={14} strokeWidth={2.4} />
+              <span>Blister Cards</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={viewMode === 'table' ? 'btn-toy-primary btn-sm' : 'btn-ghost btn-sm'}
+              style={{
+                borderRadius: '999px',
+                height: '32px',
+                padding: '0 0.85rem',
+                fontSize: '0.78rem',
+                border: 'none',
+                boxShadow: viewMode === 'table' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
+              }}
+            >
+              <List size={14} strokeWidth={2.4} />
+              <span>Tabla</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Search Input & Status Filter */}
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', paddingTop: '0.75rem', borderTop: '1.5px solid var(--toy-border)' }}>
           <div style={{ flex: 1, minWidth: '220px' }}>
             <input
               type="text"
               className="form-control"
-              placeholder="Buscar por SKU o nombre..."
+              placeholder="Buscar por SKU o nombre de juguete..."
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
@@ -469,25 +574,7 @@ export default function ProductosPage() {
             />
           </div>
 
-          <div style={{ width: '200px' }}>
-            <select
-              className="form-control"
-              value={filterCategoria}
-              onChange={(e) => {
-                setFilterCategoria(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">Todas las Categorías</option>
-              {categorias.map((c) => (
-                <option key={c.id_categoria} value={c.id_categoria}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ width: '160px' }}>
+          <div style={{ width: '180px' }}>
             <select
               className="form-control"
               value={filterEstado}
@@ -504,19 +591,203 @@ export default function ProductosPage() {
         </div>
       </div>
 
-      {/* Data Table */}
-      <DataTable
-        columns={columns}
-        data={productos}
-        loading={loading}
-        emptyMessage="No se encontraron productos en el catálogo"
-        pagination={{
-          page,
-          totalPages,
-          totalRecords
-        }}
-        onPageChange={(newPage) => setPage(newPage)}
-      />
+      {/* Main Content: Blister Cards or Data Table */}
+      {viewMode === 'blister' ? (
+        <div>
+          {loading ? (
+            <div className="card text-center" style={{ padding: '3.5rem' }}>
+              <span style={{ fontWeight: 800, color: 'var(--toy-muted)' }}>Cargando catálogo de juguetes...</span>
+            </div>
+          ) : productos.length === 0 ? (
+            <div className="card text-center" style={{ padding: '3.5rem' }}>
+              <Package size={44} color="var(--toy-muted)" style={{ margin: '0 auto 0.85rem' }} />
+              <h3 className="font-display" style={{ fontSize: '1.25rem', color: 'var(--toy-ink)' }}>No se encontraron juguetes</h3>
+              <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Prueba con otro término de búsqueda o categoría.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '1.8rem' }}>
+              {productos.map((p, idx) => {
+                const isLowStock = Number(p.stock_actual ?? 0) <= Number(p.stock_minimo ?? 0);
+                const checkerClass = idx % 3 === 0 ? 'bg-checker-blue' : idx % 3 === 1 ? 'bg-checker-gold' : 'bg-checker-purple';
+
+                return (
+                  <div
+                    key={p.id_producto}
+                    className="toy-cardboard-pack"
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      border: '2px solid var(--toy-border)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    {/* Packaging Header Strip with Euro Hanger */}
+                    <div className={checkerClass} style={{ padding: '0.85rem 1rem 0.75rem', textAlign: 'center', opacity: p.activo ? 1 : 0.65 }}>
+                      <div className="euro-hanger-punch" style={{ marginBottom: '0.45rem' }} />
+                      <h3
+                        className="toy-card-title"
+                        style={{
+                          fontSize: '0.92rem',
+                          textOverflow: 'ellipsis',
+                          overflow: 'hidden',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {p.nombre}
+                      </h3>
+                    </div>
+
+                    {/* Molded Toy Blister Capsule Frame */}
+                    <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div
+                        className="toy-bubble-frame"
+                        style={{
+                          padding: '1.25rem 0.85rem',
+                          textAlign: 'center',
+                          marginBottom: '0.85rem',
+                          backgroundColor: 'rgba(255, 244, 221, 0.45)',
+                          minHeight: '130px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem'
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '54px',
+                            height: '54px',
+                            borderRadius: '18px',
+                            background: 'linear-gradient(135deg, var(--toy-blue), var(--toy-deep-blue))',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#FFFFFF',
+                            boxShadow: '0 4px 12px rgba(8, 123, 181, 0.28)'
+                          }}
+                        >
+                          <Package size={28} strokeWidth={2.4} />
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                          <code>{p.codigo_sku}</code>
+                          <span className="badge badge-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.55rem' }}>
+                            {p.categoria || 'Juguete'}
+                          </span>
+                        </div>
+
+                        {p.marca && (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--toy-muted)', fontWeight: 700 }}>
+                            Marca: {p.marca}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Package Footer: Collector Price & Stock */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
+                          <div>
+                            <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: 'var(--toy-muted)', fontWeight: 800, display: 'block' }}>
+                              Precio Menudeo (1 ud)
+                            </span>
+                            <span className="font-display" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+                              Q{Number(p.precio_menudeo ?? 0).toFixed(2)}
+                            </span>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: 'var(--toy-muted)', fontWeight: 800, display: 'block' }}>
+                              Stock
+                            </span>
+                            <span
+                              className={`badge ${isLowStock ? 'badge-danger' : 'badge-success'}`}
+                              style={{ fontSize: '0.72rem' }}
+                            >
+                              {p.stock_actual ?? 0} uds
+                            </span>
+                          </div>
+                        </div>
+
+                        {canManageProductos && (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', paddingTop: '0.65rem', borderTop: '1.5px solid var(--toy-border)' }}>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => handleOpenEdit(p)}
+                            >
+                              <Pencil size={13} strokeWidth={2.4} />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${p.activo ? 'btn-danger' : 'btn-secondary'}`}
+                              onClick={() => handleToggleEstado(p)}
+                            >
+                              {p.activo ? (
+                                <>
+                                  <EyeOff size={13} strokeWidth={2.4} />
+                                  <span>Inactivar</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Eye size={13} strokeWidth={2.4} />
+                                  <span>Activar</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Blister View Pagination */}
+          {totalPages > 1 && (
+            <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.4rem' }}>
+              <span style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--toy-muted)' }}>
+                Página {page} de {totalPages} ({totalRecords} juguetes en total)
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage(page - 1)}
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={page >= totalPages || loading}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={productos}
+          loading={loading}
+          emptyMessage="No se encontraron productos en el catálogo"
+          pagination={{
+            page,
+            totalPages,
+            totalRecords
+          }}
+          onPageChange={(newPage) => setPage(newPage)}
+        />
+      )}
 
       {/* Modal Crear / Editar Producto */}
       <Modal
@@ -680,18 +951,18 @@ export default function ProductosPage() {
           <div
             style={{
               marginTop: '1.75rem',
-              padding: '1.25rem',
-              backgroundColor: 'var(--bg-surface-elevated)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-subtle)'
+              padding: '1.3rem',
+              backgroundColor: 'rgba(255, 244, 221, 0.5)',
+              borderRadius: '20px',
+              border: '2px solid var(--toy-border)'
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
               <div>
-                <h4 style={{ fontSize: '1rem', color: 'var(--text-main)' }}>
+                <h4 className="font-display" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--toy-ink)' }}>
                   Escalas de Precio por Volumen (10 Niveles)
                 </h4>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--toy-muted)', fontWeight: 600 }}>
                   El Nivel 1 (1 ud) es obligatorio. Los precios por unidad deben ser decrecientes o iguales según mayor volumen.
                 </p>
               </div>
@@ -700,19 +971,20 @@ export default function ProductosPage() {
             {formErrors.escalas && (
               <div
                 style={{
-                  padding: '0.65rem 0.85rem',
-                  backgroundColor: 'var(--danger-bg)',
-                  border: '1px solid var(--danger-border)',
-                  color: 'var(--danger-text)',
+                  padding: '0.75rem 0.95rem',
+                  backgroundColor: '#FEF2F2',
+                  border: '1.5px solid var(--toy-red)',
+                  color: '#991B1B',
                   fontSize: '0.82rem',
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: '14px',
                   marginBottom: '1rem',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.45rem'
+                  gap: '0.5rem',
+                  fontWeight: 700
                 }}
               >
-                <AlertCircle size={15} /> {formErrors.escalas}
+                <AlertCircle size={16} strokeWidth={2.4} /> {formErrors.escalas}
               </div>
             )}
 
@@ -727,17 +999,18 @@ export default function ProductosPage() {
                 <div
                   key={cant}
                   style={{
-                    padding: '0.6rem',
-                    backgroundColor: 'var(--bg-surface)',
-                    borderRadius: 'var(--radius-sm)',
-                    border: cant === 1 ? '1px solid var(--primary)' : '1px solid var(--border-subtle)'
+                    padding: '0.65rem 0.75rem',
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '14px',
+                    border: cant === 1 ? '2px solid var(--toy-blue)' : '1.5px solid var(--toy-border)',
+                    boxShadow: '0 2px 4px rgba(58, 42, 34, 0.04)'
                   }}
                 >
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: cant === 1 ? 'var(--primary)' : 'var(--text-dim)', marginBottom: '0.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: cant === 1 ? 'var(--toy-deep-blue)' : 'var(--toy-muted)', marginBottom: '0.25rem' }}>
                     {cant === 1 ? '1 ud (Menudeo)*' : `≥ ${cant} uds`}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginRight: '4px' }}>Q</span>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--toy-muted)', marginRight: '4px' }}>Q</span>
                     <input
                       type="number"
                       step="0.01"

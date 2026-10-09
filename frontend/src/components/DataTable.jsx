@@ -26,7 +26,7 @@ export default function DataTable({
                   style={{
                     position: 'absolute',
                     left: '12px',
-                    color: 'var(--color-dim)',
+                    color: 'var(--toy-muted)',
                     pointerEvents: 'none'
                   }}
                 />
@@ -66,11 +66,11 @@ export default function DataTable({
                       width: '20px',
                       height: '20px',
                       border: '2.5px solid rgba(58, 42, 34, 0.15)',
-                      borderTopColor: 'var(--color-primary)',
+                      borderTopColor: 'var(--toy-blue)',
                       borderRadius: '50%',
                       animation: 'spin 0.8s linear infinite'
                     }} />
-                    <span style={{ fontWeight: 600 }}>Cargando información...</span>
+                    <span style={{ fontWeight: 700 }}>Cargando información...</span>
                   </div>
                 </td>
               </tr>
@@ -78,8 +78,8 @@ export default function DataTable({
               <tr>
                 <td colSpan={columns.length} className="empty-state">
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                    <PackageOpen size={36} color="var(--color-dim)" strokeWidth={1.75} />
-                    <p style={{ fontWeight: 600 }}>{emptyMessage}</p>
+                    <PackageOpen size={36} color="var(--toy-muted)" strokeWidth={2} />
+                    <p style={{ fontWeight: 700 }}>{emptyMessage}</p>
                   </div>
                 </td>
               </tr>

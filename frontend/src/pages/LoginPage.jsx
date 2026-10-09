@@ -46,150 +46,182 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: `radial-gradient(circle at 10% 20%, rgba(25, 168, 232, 0.12), transparent 40%),
-                     radial-gradient(circle at 90% 80%, rgba(255, 157, 46, 0.12), transparent 40%),
-                     var(--bg-app)`,
-        padding: '1.5rem'
+        padding: '1.5rem',
+        backgroundColor: 'var(--toy-cream)',
+        backgroundImage: 'radial-gradient(var(--toy-cream-dark) 1.5px, transparent 1.5px)',
+        backgroundSize: '24px 24px'
       }}
     >
       <div
-        className="card"
+        className="toy-cardboard-pack"
         style={{
           width: '100%',
-          maxWidth: '460px',
-          boxShadow: 'var(--shadow-lg), 0 0 35px rgba(25, 168, 232, 0.08)',
-          border: '1.5px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '2.4rem 2rem'
+          maxWidth: '440px',
+          backgroundColor: '#FFFFFF',
+          border: '2px solid var(--toy-border)'
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        {/* Packaging Header with Checkered Pattern & Euro Hanger */}
+        <div className="bg-checker-blue" style={{ padding: '1.4rem 1.2rem 1.2rem', textAlign: 'center', color: '#FFFFFF' }}>
+          <div className="euro-hanger-punch" style={{ marginBottom: '0.85rem' }} />
+          
           <div
             style={{
-              width: '60px',
-              height: '60px',
-              margin: '0 auto 1.15rem',
-              borderRadius: 'var(--radius-lg)',
-              background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-strong))',
+              width: '52px',
+              height: '52px',
+              margin: '0 auto 0.65rem',
+              borderRadius: '16px',
+              backgroundColor: '#FFFFFF',
+              color: 'var(--toy-blue)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#ffffff',
-              boxShadow: 'var(--shadow-primary)'
+              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)'
             }}
           >
-            <Package size={32} strokeWidth={2.2} />
+            <Package size={28} strokeWidth={2.4} />
           </div>
-          <h1 style={{ fontSize: '1.8rem', marginBottom: '0.35rem', color: 'var(--color-ink)' }}>
-            Juguetería Quetzal
+
+          <h1 className="font-display" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+            JUGUETERÍA QUETZAL
           </h1>
-          <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
-            Sistema de Gestión de Juguetería
-          </p>
+
+          <div style={{ marginTop: '0.4rem' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                backgroundColor: 'rgba(0, 0, 0, 0.22)',
+                color: '#FFFFFF',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                padding: '0.25rem 0.75rem',
+                borderRadius: '999px',
+                border: '1px solid rgba(255, 255, 255, 0.3)'
+              }}
+            >
+              Control Operativo &middot; ERP Co.
+            </span>
+          </div>
         </div>
 
-        {errorMsg && (
-          <div
-            style={{
-              padding: '0.85rem 1.1rem',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--danger-bg)',
-              border: '1.5px solid var(--danger-border)',
-              color: 'var(--danger-text)',
-              fontSize: '0.88rem',
-              marginBottom: '1.4rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              fontWeight: 600
-            }}
-          >
-            <AlertCircle size={18} strokeWidth={2.2} />
-            <span>{errorMsg}</span>
+        {/* Card Body */}
+        <div style={{ padding: '2rem 1.8rem 1.8rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
+            <h2 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--toy-ink)' }}>
+              Acceso al Sistema
+            </h2>
+            <p style={{ color: 'var(--toy-muted)', fontSize: '0.86rem', fontWeight: 600, marginTop: '2px' }}>
+              Ingresa tus credenciales para gestionar el inventario
+            </p>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit}>
-          <FormField label="Correo electrónico" name="email" required>
-            <input
-              id="email"
-              type="email"
-              className="form-control"
-              placeholder="usuario@jugueteria.local"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
-          </FormField>
-
-          <FormField label="Contraseña" name="password" required>
-            <input
-              id="password"
-              type="password"
-              className="form-control"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </FormField>
-
-          <button
-            type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '0.85rem', height: '46px' }}
-            disabled={loading}
-          >
-            <LogIn size={18} strokeWidth={2.2} />
-            <span>{loading ? 'Validando credenciales...' : 'Iniciar Sesión'}</span>
-          </button>
-        </form>
-
-        {/* Demo Fast Logins */}
-        <div style={{ marginTop: '2.2rem', paddingTop: '1.4rem', borderTop: '1.5px solid var(--border-subtle)' }}>
-          <p
-            style={{
-              fontSize: '0.76rem',
-              textTransform: 'uppercase',
-              color: 'var(--color-muted)',
-              letterSpacing: '0.06em',
-              fontWeight: 800,
-              marginBottom: '0.85rem',
-              textAlign: 'center'
-            }}
-          >
-            Acceso Rápido para Demostración / Docente
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem' }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickFill('admin@jugueteria.local')}
-              title="admin@jugueteria.local"
+          {errorMsg && (
+            <div
+              style={{
+                padding: '0.85rem 1rem',
+                borderRadius: '14px',
+                backgroundColor: '#FEF2F2',
+                border: '2px solid var(--toy-red)',
+                color: '#991B1B',
+                fontSize: '0.86rem',
+                marginBottom: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.65rem',
+                fontWeight: 700
+              }}
             >
-              <ShieldCheck size={14} strokeWidth={2.2} />
-              <span>Admin</span>
-            </button>
+              <AlertCircle size={18} strokeWidth={2.4} />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <FormField label="Correo electrónico" name="email" required>
+              <input
+                id="email"
+                type="email"
+                className="form-control"
+                placeholder="usuario@jugueteria.local"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+            </FormField>
+
+            <FormField label="Contraseña" name="password" required>
+              <input
+                id="password"
+                type="password"
+                className="form-control"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </FormField>
+
             <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickFill('supervisor@jugueteria.local')}
-              title="supervisor@jugueteria.local"
+              type="submit"
+              className="btn btn-primary"
+              style={{ width: '100%', marginTop: '0.6rem', height: '46px' }}
+              disabled={loading}
             >
-              <Search size={14} strokeWidth={2.2} />
-              <span>Superv.</span>
+              <LogIn size={18} strokeWidth={2.4} />
+              <span>{loading ? 'Verificando...' : 'Iniciar Sesión'}</span>
             </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickFill('operador@jugueteria.local')}
-              title="operador@jugueteria.local"
+          </form>
+
+          {/* Quick Access Demo Accounts */}
+          <div style={{ marginTop: '1.8rem', paddingTop: '1.3rem', borderTop: '2px solid var(--toy-border)' }}>
+            <p
+              style={{
+                fontSize: '0.74rem',
+                textTransform: 'uppercase',
+                color: 'var(--toy-muted)',
+                letterSpacing: '0.06em',
+                fontWeight: 800,
+                marginBottom: '0.75rem',
+                textAlign: 'center'
+              }}
             >
-              <UserCheck size={14} strokeWidth={2.2} />
-              <span>Operador</span>
-            </button>
+              Acceso Rápido para Demostración
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.55rem' }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleQuickFill('admin@jugueteria.local')}
+                title="admin@jugueteria.local"
+              >
+                <ShieldCheck size={14} strokeWidth={2.4} />
+                <span>Admin</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleQuickFill('supervisor@jugueteria.local')}
+                title="supervisor@jugueteria.local"
+              >
+                <Search size={14} strokeWidth={2.4} />
+                <span>Superv.</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleQuickFill('operador@jugueteria.local')}
+                title="operador@jugueteria.local"
+              >
+                <UserCheck size={14} strokeWidth={2.4} />
+                <span>Operador</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

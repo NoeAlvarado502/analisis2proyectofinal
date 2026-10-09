@@ -243,20 +243,26 @@ export default function ClientesPage() {
       {/* Header */}
       <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.6rem' }}>Directorio de Clientes</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Registro fiscal de clientes mayoristas y minoristas, compatible con ventas al Consumidor Final.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
+            <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-green)', display: 'inline-block' }} />
+            <h1 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+              Directorio de Clientes &amp; Facturación
+            </h1>
+          </div>
+          <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600 }}>
+            Registro fiscal de clientes mayoristas y minoristas, compatible con ventas al Consumidor Final (CF).
           </p>
         </div>
 
         <PermissionGate permission="clientes.gestionar">
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-toy-orange"
             onClick={handleOpenCreate}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
           >
-            <UserPlus size={16} /> Nuevo Cliente
+            <UserPlus size={16} strokeWidth={2.4} />
+            <span>Nuevo Cliente</span>
           </button>
         </PermissionGate>
       </div>

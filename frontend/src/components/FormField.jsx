@@ -13,13 +13,13 @@ export default function FormField({
       {label && (
         <label htmlFor={name} className="form-label">
           <span>
-            {label} {required && <span style={{ color: 'var(--danger-text)' }}>*</span>}
+            {label} {required && <span style={{ color: 'var(--toy-red)' }}>*</span>}
           </span>
         </label>
       )}
       {children}
       {helpText && !error && (
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
+        <span style={{ fontSize: '0.75rem', color: 'var(--toy-muted)', marginTop: '0.2rem', fontWeight: 600 }}>
           {helpText}
         </span>
       )}

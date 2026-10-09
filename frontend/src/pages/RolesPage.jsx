@@ -148,16 +148,21 @@ export default function RolesPage() {
       {/* Header */}
       <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.6rem' }}>Roles y Permisos</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Administración de perfiles de usuario. Configura las acciones permitidas para cada tipo de cuenta en el sistema.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
+            <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-purple)', display: 'inline-block' }} />
+            <h1 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+              Roles y Permisos del Sistema
+            </h1>
+          </div>
+          <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600 }}>
+            Administración de perfiles operativos. Configura las acciones permitidas para cada tipo de cuenta en la juguetería.
           </p>
         </div>
 
         {canManageRoles && (
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-toy-orange"
             onClick={handleSavePermissions}
             disabled={saving || !hasChanges}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
@@ -166,25 +171,28 @@ export default function RolesPage() {
               'Guardando...'
             ) : hasChanges ? (
               <>
-                <Save size={16} /> Guardar Permisos
+                <Save size={16} strokeWidth={2.4} /> Guardar Permisos
               </>
             ) : (
               <>
-                <Check size={16} /> Sin Cambios Pendientes
+                <Check size={16} strokeWidth={2.4} /> Sin Cambios Pendientes
               </>
             )}
           </button>
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '290px 1fr', gap: '1.5rem', alignItems: 'start' }}>
         {/* Left: Role Selector List */}
-        <div className="card" style={{ padding: '1rem' }}>
-          <h3 style={{ fontSize: '0.95rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '1rem' }}>
-            Roles Definidos
-          </h3>
+        <div className="card" style={{ padding: '1.2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '1rem' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
+            <h3 className="font-display" style={{ fontSize: '0.95rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--toy-muted)', letterSpacing: '0.05em' }}>
+              Perfiles Definidos
+            </h3>
+          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
             {roles.map((r) => {
               const isSelected = selectedRole?.id_rol === r.id_rol;
               return (
@@ -199,23 +207,28 @@ export default function RolesPage() {
                     setSelectedRole(r);
                   }}
                   style={{
-                    padding: '0.85rem 1rem',
-                    borderRadius: 'var(--radius-md)',
-                    backgroundColor: isSelected ? 'var(--bg-surface-hover)' : 'var(--bg-surface-elevated)',
-                    border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border-subtle)'}`,
+                    padding: '0.95rem 1.1rem',
+                    borderRadius: '18px',
+                    backgroundColor: isSelected ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.45)',
+                    border: isSelected ? '2px solid var(--toy-deep-blue)' : '2px solid var(--toy-border)',
+                    boxShadow: isSelected ? '0 4px 0 var(--toy-deep-blue)' : 'none',
                     cursor: 'pointer',
-                    transition: 'all 150ms ease'
+                    transition: 'all 0.12s ease',
+                    transform: isSelected ? 'translateY(-2px)' : 'none'
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong style={{ color: isSelected ? '#ffffff' : 'var(--text-main)', fontSize: '0.95rem' }}>
+                    <strong className="font-display" style={{ color: isSelected ? '#FFFFFF' : 'var(--toy-ink)', fontSize: '1rem', fontWeight: 700 }}>
                       {r.nombre}
                     </strong>
-                    <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>
+                    <span
+                      className={`badge ${isSelected ? 'badge-warning' : 'badge-primary'}`}
+                      style={{ fontSize: '0.7rem' }}
+                    >
                       {r.total_permisos ?? 0}
                     </span>
                   </div>
-                  <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  <p style={{ fontSize: '0.8rem', color: isSelected ? 'rgba(255, 255, 255, 0.92)' : 'var(--toy-muted)', marginTop: '0.35rem', fontWeight: 600 }}>
                     {r.descripcion || 'Sin descripción'}
                   </p>
                 </div>
@@ -226,55 +239,54 @@ export default function RolesPage() {
 
         {/* Right: Permission Matrix by Module */}
         <div className="card">
-          <div className="card-header">
+          <div className="card-header" style={{ marginBottom: '1.4rem' }}>
             <div>
               <h2 className="card-title">
-                Permisos del rol: <span style={{ color: 'var(--primary)' }}>{selectedRole?.nombre}</span>
+                Permisos del perfil: <span style={{ color: 'var(--toy-blue)' }}>{selectedRole?.nombre}</span>
               </h2>
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+              <p style={{ color: 'var(--toy-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
                 {canManageRoles
-                  ? 'Marca o desmarca casillas para habilitar o deshabilitar funciones en este perfil.'
+                  ? 'Marca o desmarca casillas para habilitar o restringir funciones en este perfil.'
                   : 'Modo solo lectura (sin permisos de edición).'}
               </p>
             </div>
 
-            <span className="badge badge-info">
+            <span className="badge badge-purple" style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }}>
               {rolePermissions.length} permisos activos
             </span>
           </div>
 
           {loading ? (
-            <div className="empty-state">Cargando permisos...</div>
+            <div className="empty-state">Cargando permisos del rol...</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
               {Object.entries(allPermissionsByModule).map(([modulo, perms]) => {
                 if (!Array.isArray(perms)) return null;
                 const moduleCodes = perms.map((p) => (typeof p === 'string' ? p : p.codigo));
                 const allChecked = moduleCodes.every((c) => rolePermissions.includes(c));
-                const someChecked = moduleCodes.some((c) => rolePermissions.includes(c));
 
                 return (
                   <div
                     key={modulo}
                     style={{
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 'var(--radius-md)',
-                      backgroundColor: 'var(--bg-surface-elevated)',
+                      border: '2px solid var(--toy-border)',
+                      borderRadius: '20px',
+                      backgroundColor: '#FFFFFF',
                       overflow: 'hidden'
                     }}
                   >
                     {/* Module Title Header */}
                     <div
                       style={{
-                        padding: '0.75rem 1rem',
-                        backgroundColor: 'var(--bg-surface)',
-                        borderBottom: '1px solid var(--border-subtle)',
+                        padding: '0.85rem 1.25rem',
+                        backgroundColor: '#FAF5EB',
+                        borderBottom: '2px solid var(--toy-border)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between'
                       }}
                     >
-                      <strong style={{ textTransform: 'capitalize', color: 'var(--accent-cyan)' }}>
+                      <strong className="font-display" style={{ textTransform: 'capitalize', color: 'var(--toy-deep-blue)', fontSize: '1rem', fontWeight: 700 }}>
                         Módulo: {modulo}
                       </strong>
 
@@ -283,7 +295,7 @@ export default function RolesPage() {
                           type="button"
                           className="btn btn-ghost btn-sm"
                           onClick={() => handleToggleModule(perms)}
-                          style={{ fontSize: '0.75rem' }}
+                          style={{ fontSize: '0.76rem', fontWeight: 800 }}
                         >
                           {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
                         </button>
@@ -293,10 +305,10 @@ export default function RolesPage() {
                     {/* Permissions list in module */}
                     <div
                       style={{
-                        padding: '1rem',
+                        padding: '1.1rem',
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                        gap: '0.75rem'
+                        gap: '0.85rem'
                       }}
                     >
                       {perms.map((p) => {
@@ -311,13 +323,14 @@ export default function RolesPage() {
                             style={{
                               display: 'flex',
                               alignItems: 'flex-start',
-                              gap: '0.6rem',
-                              padding: '0.5rem',
-                              borderRadius: 'var(--radius-sm)',
-                              backgroundColor: isChecked ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
-                              border: `1px solid ${isChecked ? 'rgba(99, 102, 241, 0.25)' : 'transparent'}`,
+                              gap: '0.75rem',
+                              padding: '0.85rem 1rem',
+                              borderRadius: '16px',
+                              backgroundColor: isChecked ? 'rgba(25, 168, 232, 0.1)' : 'rgba(255, 244, 221, 0.35)',
+                              border: isChecked ? '2px solid var(--toy-blue)' : '1.5px solid var(--toy-border)',
                               cursor: canManageRoles && !isProtectedAdmin ? 'pointer' : 'default',
-                              opacity: isProtectedAdmin ? 0.8 : 1
+                              opacity: isProtectedAdmin ? 0.8 : 1,
+                              transition: 'all 0.12s ease'
                             }}
                           >
                             <input
@@ -325,15 +338,15 @@ export default function RolesPage() {
                               checked={isChecked}
                               onChange={() => handleTogglePermission(p.codigo)}
                               disabled={!canManageRoles || isProtectedAdmin}
-                              style={{ marginTop: '0.2rem', accentColor: 'var(--primary)' }}
+                              style={{ marginTop: '0.2rem', accentColor: 'var(--toy-blue)', width: '16px', height: '16px' }}
                             />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-ink)', lineHeight: 1.35 }}>
+                              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--toy-ink)', lineHeight: 1.35 }}>
                                 {p.descripcion}
                               </div>
                               {isProtectedAdmin && (
-                                <div style={{ fontSize: '0.72rem', color: 'var(--warning-text)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                  <ShieldAlert size={12} /> Permiso esencial del Administrador
+                                <div style={{ fontSize: '0.72rem', color: 'var(--toy-orange-dark)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 700 }}>
+                                  <ShieldAlert size={12} strokeWidth={2.4} /> Permiso esencial del Administrador
                                 </div>
                               )}
                             </div>

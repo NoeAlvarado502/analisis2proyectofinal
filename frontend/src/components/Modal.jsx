@@ -36,15 +36,18 @@ export default function Modal({
         aria-modal="true"
       >
         <div className="modal-header">
-          <h3 className="card-title">{title}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
+            <h3 className="card-title" style={{ fontSize: '1.25rem', margin: 0 }}>{title}</h3>
+          </div>
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="btn btn-secondary btn-sm"
             onClick={onClose}
             aria-label="Cerrar modal"
-            style={{ padding: '0.4rem', borderRadius: '50%', width: '32px', height: '32px' }}
+            style={{ width: '36px', height: '36px', padding: 0, borderRadius: '14px' }}
           >
-            <X size={18} strokeWidth={2.2} />
+            <X size={18} strokeWidth={2.4} />
           </button>
         </div>
         <div className="modal-body">{children}</div>
