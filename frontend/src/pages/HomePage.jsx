@@ -106,16 +106,11 @@ export default function HomePage() {
                   </p>
                 </div>
 
-                <div style={{ marginTop: '1.6rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ marginTop: '1.6rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
                   <span style={{ fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                     <span>Abrir módulo</span>
                     <ArrowRight size={15} strokeWidth={2.2} />
                   </span>
-                  {item.permission && (
-                    <span className="badge badge-info" style={{ fontSize: '0.68rem' }}>
-                      {item.permission}
-                    </span>
-                  )}
                 </div>
               </div>
             );

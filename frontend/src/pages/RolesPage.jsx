@@ -327,14 +327,13 @@ export default function RolesPage() {
                               disabled={!canManageRoles || isProtectedAdmin}
                               style={{ marginTop: '0.2rem', accentColor: 'var(--primary)' }}
                             />
-                            <div>
-                              <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{p.codigo}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-ink)', lineHeight: 1.35 }}>
                                 {p.descripcion}
                               </div>
                               {isProtectedAdmin && (
-                                <div style={{ fontSize: '0.65rem', color: 'var(--warning-text)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                  <ShieldAlert size={12} /> Privilegio protegido del Administrador
+                                <div style={{ fontSize: '0.72rem', color: 'var(--warning-text)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                  <ShieldAlert size={12} /> Permiso esencial del Administrador
                                 </div>
                               )}
                             </div>
