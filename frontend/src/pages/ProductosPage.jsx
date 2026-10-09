@@ -8,7 +8,13 @@ import Modal from '../components/Modal';
 import FormField from '../components/FormField';
 import PermissionGate from '../components/PermissionGate';
 
-const NIVELES_CANTIDAD = [1, 3, 6, 12, 25, 50, 100, 500, 1000, 10000];
+import {
+  NIVELES_CANTIDAD,
+  NIVELES_METADATA,
+  ESTRATEGIAS_PRECIO,
+  calcularEscalasAutomaticas,
+  obtenerDetalleEscala
+} from '../utils/pricingEngine';
 
 export default function ProductosPage() {
   const { can } = useAuth();
@@ -61,6 +67,10 @@ export default function ProductosPage() {
     1000: '',
     10000: ''
   });
+
+  // Automatic Pricing Engine State
+  const [estrategiaPrecio, setEstrategiaPrecio] = useState('estandar');
+  const [autoCalcularActivo, setAutoCalcularActivo] = useState(true);
 
   // Modals for Quick Add Category & Brand
   const [quickCatOpen, setQuickCatOpen] = useState(false);
@@ -135,8 +145,49 @@ export default function ProductosPage() {
       initialEscalas[c] = '';
     });
     setEscalasState(initialEscalas);
+    setEstrategiaPrecio('estandar');
+    setAutoCalcularActivo(true);
     setFormErrors({});
     setModalOpen(true);
+  };
+
+  // Handler for Level 1 base price changes (triggers auto-calculation)
+  const handleNivel1Change = (val) => {
+    if (autoCalcularActivo && val && parseFloat(val) > 0) {
+      const calculadas = calcularEscalasAutomaticas(val, estrategiaPrecio);
+      if (calculadas) {
+        setEscalasState(calculadas);
+        return;
+      }
+    }
+    setEscalasState((prev) => ({ ...prev, 1: val }));
+  };
+
+  // Switch commercial margin strategy
+  const handleCambiarEstrategia = (estrategiaKey) => {
+    setEstrategiaPrecio(estrategiaKey);
+    const p1 = escalasState[1];
+    if (p1 && parseFloat(p1) > 0) {
+      const calculadas = calcularEscalasAutomaticas(p1, estrategiaKey);
+      if (calculadas) {
+        setEscalasState(calculadas);
+        toast.info(`Escalas actualizadas: ${ESTRATEGIAS_PRECIO[estrategiaKey].nombre}`);
+      }
+    }
+  };
+
+  // Manual trigger to recalculate all tiers
+  const handleRecalcularEscalasManual = () => {
+    const p1 = escalasState[1];
+    if (!p1 || parseFloat(p1) <= 0) {
+      toast.warning('Ingresa primero el precio de menudeo (1 ud) para calcular las escalas');
+      return;
+    }
+    const calculadas = calcularEscalasAutomaticas(p1, estrategiaPrecio);
+    if (calculadas) {
+      setEscalasState(calculadas);
+      toast.success('¡Escalas recalculadas automáticamente con éxito!');
+    }
   };
 
   // Open Edit Modal (fetches product detail with current tiers)
@@ -947,36 +998,122 @@ export default function ProductosPage() {
             </FormField>
           </div>
 
-          {/* Escalas de Precios por Cantidad */}
+          {/* Escalas de Precios por Cantidad con Sistema Automático */}
           <div
             style={{
-              marginTop: '1.75rem',
-              padding: '1.3rem',
-              backgroundColor: 'rgba(255, 244, 221, 0.5)',
+              marginTop: '1.5rem',
+              padding: '1.25rem',
+              backgroundColor: 'rgba(255, 244, 221, 0.45)',
               borderRadius: '20px',
               border: '2px solid var(--toy-border)'
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+            {/* Header del Sistema de Precios */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
               <div>
-                <h4 className="font-display" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--toy-ink)' }}>
-                  Escalas de Precio por Volumen (10 Niveles)
-                </h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--toy-muted)', fontWeight: 600 }}>
-                  El Nivel 1 (1 ud) es obligatorio. Los precios por unidad deben ser decrecientes o iguales según mayor volumen.
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
+                  <h4 className="font-display" style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--toy-ink)' }}>
+                    Escalas de Precio por Volumen (10 Niveles)
+                  </h4>
+                  <span
+                    style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      padding: '0.15rem 0.55rem',
+                      borderRadius: '999px',
+                      backgroundColor: autoCalcularActivo ? 'rgba(25, 168, 232, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                      color: autoCalcularActivo ? 'var(--toy-deep-blue)' : 'var(--toy-muted)',
+                      border: autoCalcularActivo ? '1px solid rgba(25, 168, 232, 0.35)' : '1px solid rgba(100, 116, 139, 0.25)'
+                    }}
+                  >
+                    {autoCalcularActivo ? '⚡ Auto-Cálculo Activo' : 'Manual'}
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 600, marginTop: '2px' }}>
+                  Al ingresar el precio de menudeo (1 ud), el sistema genera automáticamente descuentos decrecientes por mayoreo.
                 </p>
               </div>
+
+              {/* Botón de recálculo manual */}
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleRecalcularEscalasManual}
+                title="Aplica la fórmula matemática a partir del precio de menudeo"
+                style={{ height: '32px', fontSize: '0.76rem' }}
+              >
+                <Sparkles size={13} strokeWidth={2.4} color="var(--toy-deep-blue)" />
+                <span>Recalcular con Fórmula</span>
+              </button>
+            </div>
+
+            {/* Selector de Estrategia Comercial y Toggle */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+                padding: '0.75rem 1rem',
+                backgroundColor: '#FFFFFF',
+                borderRadius: '16px',
+                border: '1.5px solid var(--toy-border)',
+                marginBottom: '1rem'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--toy-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Perfil de Margen:
+                </span>
+                {Object.values(ESTRATEGIAS_PRECIO).map((est) => {
+                  const isCurrent = estrategiaPrecio === est.id;
+                  return (
+                    <button
+                      key={est.id}
+                      type="button"
+                      onClick={() => handleCambiarEstrategia(est.id)}
+                      style={{
+                        padding: '0.25rem 0.65rem',
+                        borderRadius: '999px',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        border: isCurrent ? '1.5px solid var(--toy-deep-blue)' : '1.5px solid var(--toy-border)',
+                        backgroundColor: isCurrent ? 'var(--toy-blue)' : '#FFFDF9',
+                        color: isCurrent ? '#FFFFFF' : 'var(--toy-ink)',
+                        cursor: 'pointer',
+                        transition: 'all 0.12s ease',
+                        boxShadow: isCurrent ? '0 2px 4px rgba(8, 123, 181, 0.25)' : 'none'
+                      }}
+                      title={est.descripcion}
+                    >
+                      {est.nombre}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.76rem', fontWeight: 700, color: 'var(--toy-ink)', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={autoCalcularActivo}
+                  onChange={(e) => setAutoCalcularActivo(e.target.checked)}
+                  style={{ accentColor: 'var(--toy-blue)', width: '15px', height: '15px' }}
+                />
+                <span>Auto-actualizar al escribir</span>
+              </label>
             </div>
 
             {formErrors.escalas && (
               <div
                 style={{
-                  padding: '0.75rem 0.95rem',
+                  padding: '0.65rem 0.85rem',
                   backgroundColor: '#FEF2F2',
                   border: '1.5px solid var(--toy-red)',
                   color: '#991B1B',
-                  fontSize: '0.82rem',
-                  borderRadius: '14px',
+                  fontSize: '0.78rem',
+                  borderRadius: '12px',
                   marginBottom: '1rem',
                   display: 'flex',
                   alignItems: 'center',
@@ -984,49 +1121,104 @@ export default function ProductosPage() {
                   fontWeight: 700
                 }}
               >
-                <AlertCircle size={16} strokeWidth={2.4} /> {formErrors.escalas}
+                <AlertCircle size={15} strokeWidth={2.4} /> {formErrors.escalas}
               </div>
             )}
 
+            {/* 10 Niveles de Cantidad */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-                gap: '0.75rem'
+                gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
+                gap: '0.65rem'
               }}
             >
-              {NIVELES_CANTIDAD.map((cant) => (
-                <div
-                  key={cant}
-                  style={{
-                    padding: '0.65rem 0.75rem',
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: '14px',
-                    border: cant === 1 ? '2px solid var(--toy-blue)' : '1.5px solid var(--toy-border)',
-                    boxShadow: '0 2px 4px rgba(58, 42, 34, 0.04)'
-                  }}
-                >
-                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: cant === 1 ? 'var(--toy-deep-blue)' : 'var(--toy-muted)', marginBottom: '0.25rem' }}>
-                    {cant === 1 ? '1 ud (Menudeo)*' : `≥ ${cant} uds`}
+              {NIVELES_CANTIDAD.map((cant) => {
+                const meta = NIVELES_METADATA[cant] || { etiqueta: `≥ ${cant} uds`, descripcion: '' };
+                const isBase = cant === 1;
+                const detalle = obtenerDetalleEscala(cant, escalasState[cant], escalasState[1]);
+
+                return (
+                  <div
+                    key={cant}
+                    style={{
+                      padding: '0.65rem 0.75rem',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '14px',
+                      border: isBase ? '2px solid var(--toy-blue)' : '1.5px solid var(--toy-border)',
+                      boxShadow: isBase ? '0 3px 8px rgba(8, 123, 181, 0.15)' : '0 1px 3px rgba(58, 42, 34, 0.04)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                      <span style={{ fontSize: '0.74rem', fontWeight: 800, color: isBase ? 'var(--toy-deep-blue)' : 'var(--toy-ink)' }}>
+                        {meta.etiqueta}
+                      </span>
+                      {!isBase && detalle.porcentajeDescuento > 0 && (
+                        <span
+                          style={{
+                            fontSize: '0.64rem',
+                            fontWeight: 800,
+                            padding: '0.1rem 0.35rem',
+                            borderRadius: '999px',
+                            backgroundColor: 'rgba(25, 168, 232, 0.12)',
+                            color: 'var(--toy-deep-blue)'
+                          }}
+                        >
+                          -{detalle.porcentajeDescuento}%
+                        </span>
+                      )}
+                      {isBase && (
+                        <span
+                          style={{
+                            fontSize: '0.64rem',
+                            fontWeight: 800,
+                            padding: '0.1rem 0.35rem',
+                            borderRadius: '999px',
+                            backgroundColor: 'rgba(25, 168, 232, 0.15)',
+                            color: 'var(--toy-deep-blue)'
+                          }}
+                        >
+                          Base
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--toy-muted)', marginRight: '4px' }}>Q</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        className="form-control"
+                        style={{ padding: '0.3rem 0.45rem', fontSize: '0.82rem', height: '34px' }}
+                        placeholder={isBase ? '0.00' : '0.00'}
+                        value={escalasState[cant] ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (isBase) {
+                            handleNivel1Change(val);
+                          } else {
+                            setEscalasState((prev) => ({ ...prev, [cant]: val }));
+                          }
+                        }}
+                        required={isBase}
+                      />
+                    </div>
+
+                    <div style={{ fontSize: '0.66rem', color: 'var(--toy-muted)', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{meta.descripcion}</span>
+                      {!isBase && detalle.ahorroUnitario > 0 && (
+                        <span style={{ color: 'var(--toy-green)', fontWeight: 700 }}>
+                          -Q{detalle.ahorroUnitario}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--toy-muted)', marginRight: '4px' }}>Q</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      className="form-control"
-                      style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
-                      placeholder={cant === 1 ? '0.00' : 'Opcional'}
-                      value={escalasState[cant] ?? ''}
-                      onChange={(e) =>
-                        setEscalasState({ ...escalasState, [cant]: e.target.value })
-                      }
-                      required={cant === 1}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </form>

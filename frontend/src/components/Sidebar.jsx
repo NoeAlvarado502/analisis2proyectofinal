@@ -87,34 +87,6 @@ export default function Sidebar() {
           );
         })}
       </nav>
-
-      <div style={{ padding: '0.9rem 1.1rem' }}>
-        <div
-          style={{
-            padding: '0.75rem 0.95rem',
-            borderRadius: '16px',
-            backgroundColor: 'rgba(255, 244, 221, 0.7)',
-            border: '1.5px solid var(--toy-border)',
-            fontSize: '0.75rem',
-            fontWeight: 800,
-            color: 'var(--toy-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          <span
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '999px',
-              backgroundColor: 'var(--toy-green)',
-              display: 'inline-block'
-            }}
-          />
-          <span>Sistema Activo &middot; v1.0</span>
-        </div>
-      </div>
     </aside>
   );
 }

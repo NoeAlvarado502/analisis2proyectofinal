@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogOut, Sparkles } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 
 export default function Navbar() {
@@ -29,25 +29,7 @@ export default function Navbar() {
 
   return (
     <header className="top-navbar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.45rem',
-            padding: '0.4rem 0.95rem',
-            borderRadius: '999px',
-            backgroundColor: 'rgba(255, 244, 221, 0.9)',
-            border: '1.5px solid var(--toy-border)',
-            fontSize: '0.8rem',
-            fontWeight: 800,
-            color: 'var(--toy-ink)'
-          }}
-        >
-          <Sparkles size={15} color="var(--toy-orange)" />
-          <span>Panel de Operación &middot; Control de Inventario</span>
-        </div>
-      </div>
+      <div className="navbar-left" />
 
       <div className="navbar-user">
         <div className="user-profile">
