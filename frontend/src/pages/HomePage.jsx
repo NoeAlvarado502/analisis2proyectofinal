@@ -143,7 +143,7 @@ export default function HomePage() {
       {/* Permitted Modules Section */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.35rem' }}>
-          <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-orange)', display: 'inline-block' }} />
+          <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
           <h2 className="font-display" style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--toy-ink)' }}>
             Módulos Habilitados
           </h2>
@@ -176,8 +176,8 @@ export default function HomePage() {
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.borderColor = 'var(--toy-orange)';
-                  e.currentTarget.style.boxShadow = '0 12px 28px rgba(255, 157, 46, 0.16)';
+                  e.currentTarget.style.borderColor = 'var(--toy-blue)';
+                  e.currentTarget.style.boxShadow = '0 12px 28px rgba(25, 168, 232, 0.18)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'none';
@@ -218,13 +218,13 @@ export default function HomePage() {
                 </div>
 
                 <div style={{ marginTop: '1.4rem', paddingTop: '1rem', borderTop: '1.5px solid var(--toy-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--toy-orange)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--toy-deep-blue)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                     <span>Entrar al módulo</span>
                     <ArrowRight size={15} strokeWidth={2.4} />
                   </span>
                   <button
                     type="button"
-                    className="btn btn-toy-orange btn-sm"
+                    className="btn btn-primary btn-sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(item.path);

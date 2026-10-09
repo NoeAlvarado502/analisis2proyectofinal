@@ -312,7 +312,7 @@ export default function UsuariosPage() {
         </div>
 
         <PermissionGate permission="usuarios.gestionar">
-          <button type="button" className="btn btn-toy-orange" onClick={handleOpenCreate}>
+          <button type="button" className="btn btn-primary" onClick={handleOpenCreate}>
             <UserPlus size={16} strokeWidth={2.4} />
             <span>Nuevo Usuario</span>
           </button>

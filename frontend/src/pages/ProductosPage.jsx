@@ -437,7 +437,7 @@ export default function ProductosPage() {
       <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
-            <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-orange)', display: 'inline-block' }} />
+            <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
             <h1 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
               Catálogo de Juguetes &amp; Precios por Volumen
             </h1>
@@ -450,7 +450,7 @@ export default function ProductosPage() {
         <PermissionGate permission="productos.gestionar">
           <button
             type="button"
-            className="btn btn-toy-orange"
+            className="btn btn-primary"
             onClick={handleOpenCreate}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
           >
@@ -476,10 +476,10 @@ export default function ProductosPage() {
                 fontWeight: 800,
                 border: '2px solid',
                 cursor: 'pointer',
-                backgroundColor: filterCategoria === '' ? 'var(--toy-orange)' : 'rgba(255, 244, 221, 0.7)',
+                backgroundColor: filterCategoria === '' ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.7)',
                 color: filterCategoria === '' ? '#FFFFFF' : 'var(--toy-ink)',
-                borderColor: filterCategoria === '' ? 'var(--toy-orange-dark)' : 'var(--toy-border)',
-                boxShadow: filterCategoria === '' ? '0 2px 6px rgba(255, 157, 46, 0.35)' : 'none',
+                borderColor: filterCategoria === '' ? 'var(--toy-deep-blue)' : 'var(--toy-border)',
+                boxShadow: filterCategoria === '' ? '0 2px 6px rgba(25, 168, 232, 0.35)' : 'none',
                 transition: 'all 0.12s ease'
               }}
             >
@@ -499,10 +499,10 @@ export default function ProductosPage() {
                     fontWeight: 800,
                     border: '2px solid',
                     cursor: 'pointer',
-                    backgroundColor: isActive ? 'var(--toy-orange)' : 'rgba(255, 244, 221, 0.7)',
+                    backgroundColor: isActive ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.7)',
                     color: isActive ? '#FFFFFF' : 'var(--toy-ink)',
-                    borderColor: isActive ? 'var(--toy-orange-dark)' : 'var(--toy-border)',
-                    boxShadow: isActive ? '0 2px 6px rgba(255, 157, 46, 0.35)' : 'none',
+                    borderColor: isActive ? 'var(--toy-deep-blue)' : 'var(--toy-border)',
+                    boxShadow: isActive ? '0 2px 6px rgba(25, 168, 232, 0.35)' : 'none',
                     transition: 'all 0.12s ease'
                   }}
                 >
@@ -527,14 +527,14 @@ export default function ProductosPage() {
             <button
               type="button"
               onClick={() => setViewMode('blister')}
-              className={viewMode === 'blister' ? 'btn-toy-orange btn-sm' : 'btn-ghost btn-sm'}
+              className={viewMode === 'blister' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
               style={{
                 borderRadius: '999px',
                 height: '32px',
                 padding: '0 0.85rem',
                 fontSize: '0.78rem',
                 border: 'none',
-                boxShadow: viewMode === 'blister' ? '0 2px 0 var(--toy-orange-dark)' : 'none'
+                boxShadow: viewMode === 'blister' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
               }}
             >
               <Boxes size={14} strokeWidth={2.4} />
@@ -543,14 +543,14 @@ export default function ProductosPage() {
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={viewMode === 'table' ? 'btn-toy-orange btn-sm' : 'btn-ghost btn-sm'}
+              className={viewMode === 'table' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
               style={{
                 borderRadius: '999px',
                 height: '32px',
                 padding: '0 0.85rem',
                 fontSize: '0.78rem',
                 border: 'none',
-                boxShadow: viewMode === 'table' ? '0 2px 0 var(--toy-orange-dark)' : 'none'
+                boxShadow: viewMode === 'table' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
               }}
             >
               <List size={14} strokeWidth={2.4} />

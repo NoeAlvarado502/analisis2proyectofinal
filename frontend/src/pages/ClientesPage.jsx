@@ -257,7 +257,7 @@ export default function ClientesPage() {
         <PermissionGate permission="clientes.gestionar">
           <button
             type="button"
-            className="btn btn-toy-orange"
+            className="btn btn-primary"
             onClick={handleOpenCreate}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
           >
