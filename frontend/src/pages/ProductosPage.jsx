@@ -199,7 +199,7 @@ export default function ProductosPage() {
             break;
           }
           if (currentPrice > lastPrice) {
-            errors.escalas = `Regla de negocio: El precio de escala (${cant} uds: Q${currentPrice}) no puede ser mayor al precio del nivel anterior (Q${lastPrice})`;
+            errors.escalas = `El precio de escala (${cant} uds: Q${currentPrice}) no puede ser mayor al precio del nivel anterior (Q${lastPrice})`;
             break;
           }
           lastPrice = currentPrice;
@@ -412,7 +412,7 @@ export default function ProductosPage() {
             type="button"
             className={`btn btn-sm ${row.activo ? 'btn-danger' : 'btn-secondary'}`}
             onClick={() => handleToggleEstado(row)}
-            title={row.activo ? 'Inactivar producto (RN04)' : 'Reactivar producto'}
+            title={row.activo ? 'Inactivar producto' : 'Reactivar producto'}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
           >
             {row.activo ? (
@@ -551,7 +551,7 @@ export default function ProductosPage() {
               label="Código SKU"
               name="codigo_sku"
               error={formErrors.codigo_sku}
-              helpText={modalMode === 'edit' ? 'Inmutable (RN05)' : 'Código único en mayúsculas'}
+              helpText={modalMode === 'edit' ? 'Código no modificable' : 'Código único en mayúsculas'}
               required
             >
               <input

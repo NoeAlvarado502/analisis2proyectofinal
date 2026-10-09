@@ -81,10 +81,10 @@ export default function LoginPage() {
             <Package size={32} strokeWidth={2.2} />
           </div>
           <h1 style={{ fontSize: '1.8rem', marginBottom: '0.35rem', color: 'var(--color-ink)' }}>
-            Juguetería DB
+            Juguetería Quetzal
           </h1>
           <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
-            Sistema de Gestión · Análisis II (Sprint 1)
+            Sistema de Gestión de Juguetería
           </p>
         </div>
 

@@ -36,13 +36,13 @@ export default function HomePage() {
                 fontWeight: 800
               }}
             >
-              Entrega 1 · Sprint 1 (20%)
+              Juguetería Quetzal
             </span>
             <h1 style={{ fontSize: '2rem', marginTop: '0.35rem', marginBottom: '0.5rem', color: 'var(--color-ink)' }}>
               Bienvenido, {user?.nombre_completo || 'Usuario'}
             </h1>
             <p style={{ color: 'var(--color-muted)', fontSize: '0.96rem', maxWidth: '680px', fontWeight: 500 }}>
-              Has iniciado sesión con el rol <strong style={{ color: 'var(--color-ink)' }}>{user?.rol}</strong>. A continuación se presentan los módulos habilitados según la matriz de seguridad RBAC.
+              Has iniciado sesión con el rol <strong style={{ color: 'var(--color-ink)' }}>{user?.rol}</strong>. A continuación se presentan los módulos habilitados según la matriz de seguridad.
             </p>
           </div>
 
@@ -120,38 +120,6 @@ export default function HomePage() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* Sprint 1 Scope & Business Rules status card */}
-      <div
-        className="card"
-        style={{
-          marginTop: '2.6rem',
-          backgroundColor: '#ffffff',
-          borderColor: 'var(--border-subtle)'
-        }}
-      >
-        <div className="card-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <Shield size={20} color="var(--color-green)" strokeWidth={2.2} />
-            <h3 className="card-title">Reglas de Negocio en Ejecución (Motor MariaDB/MySQL)</h3>
-          </div>
-          <span className="badge badge-success">Auditado & Protegido</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-          <div style={{ padding: '0.9rem', background: '#FCF8F0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <strong style={{ color: 'var(--color-primary-strong)' }}>RN01:</strong> Control estricto de inventario (no sobreventa).
-          </div>
-          <div style={{ padding: '0.9rem', background: '#FCF8F0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <strong style={{ color: 'var(--color-primary-strong)' }}>RN04:</strong> Inactivación lógica en lugar de borrado físico.
-          </div>
-          <div style={{ padding: '0.9rem', background: '#FCF8F0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <strong style={{ color: 'var(--color-primary-strong)' }}>RN05:</strong> Correo y código SKU únicos e inmutables.
-          </div>
-          <div style={{ padding: '0.9rem', background: '#FCF8F0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <strong style={{ color: 'var(--color-primary-strong)' }}>RBAC:</strong> Trazabilidad auditable mediante variable @usuario_actual.
-          </div>
         </div>
       </div>
     </div>

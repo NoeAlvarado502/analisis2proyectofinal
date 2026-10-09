@@ -65,7 +65,7 @@ export default function AccessDeniedPage() {
           }}
         >
           <div><strong style={{ color: 'var(--color-ink)' }}>Usuario:</strong> {user?.nombre_completo} ({user?.email})</div>
-          <div><strong style={{ color: 'var(--color-ink)' }}>Regla de seguridad:</strong> Control de acceso granular (RBAC) verificado.</div>
+          <div><strong style={{ color: 'var(--color-ink)' }}>Seguridad:</strong> Control de acceso granular (RBAC) verificado.</div>
         </div>
 
         <Link to="/inicio" className="btn btn-primary" style={{ width: '100%', height: '46px' }}>

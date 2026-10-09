@@ -55,8 +55,8 @@ export default function Sidebar() {
           <Package size={24} strokeWidth={2.2} />
         </div>
         <div>
-          <div className="brand-title">Juguetería DB</div>
-          <div className="brand-subtitle">Análisis II · Sprint 1</div>
+          <div className="brand-title">Juguetería Quetzal</div>
+          <div className="brand-subtitle">Sistema de Gestión</div>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export default function Sidebar() {
       </nav>
 
       <div style={{ padding: '1rem 1.4rem', borderTop: '1.5px solid var(--border-subtle)', fontSize: '0.76rem', color: 'var(--color-dim)', fontWeight: 600 }}>
-        Versión 0.1.0-sprint1
+        Versión 1.0.0
       </div>
     </aside>
   );

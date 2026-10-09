@@ -29,20 +29,19 @@ export default function RolesPage() {
 
       if (resRoles?.data) {
         setRoles(resRoles.data);
-        if (resRoles.data.length > 0 && !selectedRole) {
-          setSelectedRole(resRoles.data[0]);
-        }
+        setSelectedRole((prev) => prev || (resRoles.data.length > 0 ? resRoles.data[0] : null));
       }
 
       if (resPermisos?.data) {
-        setAllPermissionsByModule(resPermisos.data);
+        const byModule = resPermisos.data.por_modulo || resPermisos.data;
+        setAllPermissionsByModule(byModule);
       }
     } catch (err) {
       toast.error(err.message || 'Error cargando datos de roles');
     } finally {
       setLoading(false);
     }
-  }, [selectedRole, toast]);
+  }, [toast]);
 
   useEffect(() => {
     loadInitialData();
@@ -91,9 +90,9 @@ export default function RolesPage() {
 
   // Toggle all permissions for an entire module
   const handleToggleModule = (modulePerms) => {
-    if (!canManageRoles) return;
+    if (!canManageRoles || !Array.isArray(modulePerms)) return;
 
-    const moduleCodes = modulePerms.map((p) => p.codigo);
+    const moduleCodes = modulePerms.map((p) => (typeof p === 'string' ? p : p.codigo));
     const allChecked = moduleCodes.every((c) => rolePermissions.includes(c));
 
     setRolePermissions((prev) => {
@@ -249,7 +248,8 @@ export default function RolesPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {Object.entries(allPermissionsByModule).map(([modulo, perms]) => {
-                const moduleCodes = perms.map((p) => p.codigo);
+                if (!Array.isArray(perms)) return null;
+                const moduleCodes = perms.map((p) => (typeof p === 'string' ? p : p.codigo));
                 const allChecked = moduleCodes.every((c) => rolePermissions.includes(c));
                 const someChecked = moduleCodes.some((c) => rolePermissions.includes(c));
 
