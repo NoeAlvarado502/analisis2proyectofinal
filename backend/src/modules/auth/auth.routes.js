@@ -7,7 +7,7 @@ export const authRouter = Router();
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: process.env.NODE_ENV === 'development' ? 100 : 10,
   skip: () => process.env.NODE_ENV === 'test', // Desactivar en pruebas para evitar bloqueos
   message: {
     error: {
