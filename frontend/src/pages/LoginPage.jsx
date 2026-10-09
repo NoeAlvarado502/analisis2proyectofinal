@@ -103,7 +103,7 @@ export default function LoginPage() {
                 border: '1px solid rgba(255, 255, 255, 0.3)'
               }}
             >
-              Control Operativo &middot; ERP Co.
+              Sistema de Gestión de Inventario
             </span>
           </div>
         </div>

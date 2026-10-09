@@ -61,11 +61,8 @@ export default function Sidebar() {
             </span>
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="badge badge-warning" style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem' }}>
-              ERP CO.
-            </span>
             <span className="brand-subtitle" style={{ margin: 0 }}>
-              Gestión &amp; Stock
+              Sistema de Gestión
             </span>
           </div>
         </div>

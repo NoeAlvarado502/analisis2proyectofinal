@@ -186,7 +186,7 @@ export default function RolesPage() {
         {/* Left: Role Selector List */}
         <div className="card" style={{ padding: '1.2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '1rem' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
+            <span style={{ width: '8px', height: '8px', borderRadius: '999px', backgroundColor: 'var(--toy-orange)', display: 'inline-block' }} />
             <h3 className="font-display" style={{ fontSize: '0.95rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--toy-muted)', letterSpacing: '0.05em' }}>
               Perfiles Definidos
             </h3>
@@ -209,9 +209,9 @@ export default function RolesPage() {
                   style={{
                     padding: '0.95rem 1.1rem',
                     borderRadius: '18px',
-                    backgroundColor: isSelected ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.45)',
-                    border: isSelected ? '2px solid var(--toy-deep-blue)' : '2px solid var(--toy-border)',
-                    boxShadow: isSelected ? '0 4px 0 var(--toy-deep-blue)' : 'none',
+                    backgroundColor: isSelected ? 'var(--toy-orange)' : 'rgba(255, 244, 221, 0.45)',
+                    border: isSelected ? '2px solid var(--toy-orange-dark)' : '2px solid var(--toy-border)',
+                    boxShadow: isSelected ? '0 4px 0 var(--toy-orange-dark)' : 'none',
                     cursor: 'pointer',
                     transition: 'all 0.12s ease',
                     transform: isSelected ? 'translateY(-2px)' : 'none'
@@ -222,7 +222,7 @@ export default function RolesPage() {
                       {r.nombre}
                     </strong>
                     <span
-                      className={`badge ${isSelected ? 'badge-warning' : 'badge-primary'}`}
+                      className={`badge ${isSelected ? 'badge-primary' : 'badge-warning'}`}
                       style={{ fontSize: '0.7rem' }}
                     >
                       {r.total_permisos ?? 0}
@@ -242,7 +242,7 @@ export default function RolesPage() {
           <div className="card-header" style={{ marginBottom: '1.4rem' }}>
             <div>
               <h2 className="card-title">
-                Permisos del perfil: <span style={{ color: 'var(--toy-blue)' }}>{selectedRole?.nombre}</span>
+                Permisos del perfil: <span style={{ color: 'var(--toy-orange)' }}>{selectedRole?.nombre}</span>
               </h2>
               <p style={{ color: 'var(--toy-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
                 {canManageRoles
@@ -326,8 +326,8 @@ export default function RolesPage() {
                               gap: '0.75rem',
                               padding: '0.85rem 1rem',
                               borderRadius: '16px',
-                              backgroundColor: isChecked ? 'rgba(25, 168, 232, 0.1)' : 'rgba(255, 244, 221, 0.35)',
-                              border: isChecked ? '2px solid var(--toy-blue)' : '1.5px solid var(--toy-border)',
+                              backgroundColor: isChecked ? 'rgba(255, 157, 46, 0.14)' : 'rgba(255, 244, 221, 0.35)',
+                              border: isChecked ? '2px solid var(--toy-orange)' : '1.5px solid var(--toy-border)',
                               cursor: canManageRoles && !isProtectedAdmin ? 'pointer' : 'default',
                               opacity: isProtectedAdmin ? 0.8 : 1,
                               transition: 'all 0.12s ease'
@@ -338,7 +338,7 @@ export default function RolesPage() {
                               checked={isChecked}
                               onChange={() => handleTogglePermission(p.codigo)}
                               disabled={!canManageRoles || isProtectedAdmin}
-                              style={{ marginTop: '0.2rem', accentColor: 'var(--toy-blue)', width: '16px', height: '16px' }}
+                              style={{ marginTop: '0.2rem', accentColor: 'var(--toy-orange)', width: '16px', height: '16px' }}
                             />
                             <div style={{ flex: 1 }}>
                               <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--toy-ink)', lineHeight: 1.35 }}>

@@ -115,6 +115,16 @@ a:hover {
   color: var(--toy-deep-blue);
 }
 
+/* Selección de texto: fondo naranja y texto blanco */
+::selection {
+  background-color: var(--toy-orange);
+  color: #FFFFFF;
+}
+::-moz-selection {
+  background-color: var(--toy-orange);
+  color: #FFFFFF;
+}
+
 /* Scrollbar táctil con tonos Cream / Toy Blue */
 ::-webkit-scrollbar {
   width: 9px;
@@ -253,10 +263,10 @@ a:hover {
 
 /* 6. Chips interactivos */
 .chip-active {
-  background-color: var(--toy-blue) !important;
+  background-color: var(--toy-orange) !important;
   color: #FFFFFF !important;
-  border-color: var(--toy-blue) !important;
-  box-shadow: 0 2px 6px rgba(25, 168, 232, 0.3) !important;
+  border-color: var(--toy-orange-dark) !important;
+  box-shadow: 0 2px 6px rgba(255, 157, 46, 0.35) !important;
 }
 
 /* ==========================================================================
@@ -352,10 +362,10 @@ a:hover {
 }
 
 .nav-item.active {
-  background-color: var(--toy-blue);
+  background-color: var(--toy-orange);
   color: #FFFFFF;
-  box-shadow: 0 3px 0 var(--toy-deep-blue);
-  border-color: var(--toy-deep-blue);
+  box-shadow: 0 3px 0 var(--toy-orange-dark);
+  border-color: var(--toy-orange-dark);
 }
 
 .nav-icon {
@@ -675,8 +685,8 @@ a:hover {
 
 .form-control:focus {
   background-color: #FFFFFF;
-  border-color: var(--toy-blue);
-  box-shadow: 0 0 0 4px rgba(25, 168, 232, 0.2);
+  border-color: var(--toy-orange);
+  box-shadow: 0 0 0 4px rgba(255, 157, 46, 0.2);
 }
 
 .form-control::placeholder {
