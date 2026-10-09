@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import AccessDeniedPage from '../pages/AccessDeniedPage';
 
 export default function ProtectedRoute({ requiredPermission, children }) {
   const { user, loading, can } = useAuth();
@@ -41,7 +40,7 @@ export default function ProtectedRoute({ requiredPermission, children }) {
   }
 
   if (requiredPermission && !can(requiredPermission)) {
-    return <AccessDeniedPage />;
+    return <Navigate to="/inicio" replace />;
   }
 
   return children ? children : <Outlet />;

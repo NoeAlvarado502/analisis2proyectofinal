@@ -8,7 +8,6 @@ import UsuariosPage from '../pages/UsuariosPage';
 import RolesPage from '../pages/RolesPage';
 import ClientesPage from '../pages/ClientesPage';
 import ProductosPage from '../pages/ProductosPage';
-import AccessDeniedPage from '../pages/AccessDeniedPage';
 import { useAuth } from '../auth/AuthContext';
 
 export default function AppRoutes() {
@@ -60,8 +59,6 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
-
-        <Route path="/acceso-denegado" element={<AccessDeniedPage />} />
       </Route>
 
       {/* Catch-all */}
