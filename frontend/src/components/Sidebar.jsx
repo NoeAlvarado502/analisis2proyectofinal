@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, ShieldCheck, UserCheck, Boxes, Package } from 'lucide-react';
+import { Home, Users, ShieldCheck, UserCheck, Boxes, ToyBrick } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 
 export const MENU_ITEMS = [
@@ -52,19 +52,12 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="brand-icon">
-          <Package size={24} strokeWidth={2.4} />
+          <ToyBrick size={26} strokeWidth={2.4} />
         </div>
-        <div>
-          <div className="flex items-center gap-1.5">
-            <span className="brand-title">
-              JUGUETERÍA <span style={{ color: 'var(--toy-blue)' }}>QUETZAL</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="brand-subtitle" style={{ margin: 0 }}>
-              Sistema de Gestión
-            </span>
-          </div>
+        <div className="flex items-center">
+          <span className="brand-title">
+            JUGUETERÍA QUETZAL
+          </span>
         </div>
       </div>
 
@@ -80,7 +73,7 @@ export default function Sidebar() {
               }
             >
               <span className="nav-icon">
-                <Icon size={19} strokeWidth={2.2} />
+                <Icon size={22} strokeWidth={2.4} />
               </span>
               <span>{item.label}</span>
             </NavLink>

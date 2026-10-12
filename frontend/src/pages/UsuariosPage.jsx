@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserPlus, Pencil, KeyRound, UserX, UserCheck } from 'lucide-react';
+import { UserPlus, Pencil, KeyRound } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
 import FormField from '../components/FormField';
 import PermissionGate from '../components/PermissionGate';
+import SearchInput from '../components/SearchInput';
+import FilterDropdown from '../components/FilterDropdown';
+import ToySwitch from '../components/ToySwitch';
+import PageCard from '../components/PageCard';
+import { parseApiErrors, isValidEmail, isValidName, filterOutNumbers } from '../utils/formValidators';
 
 export default function UsuariosPage() {
   const { user: authUser } = useAuth();
@@ -22,6 +28,12 @@ export default function UsuariosPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  const estadoOptions = [
+    { value: '', label: 'Todos los estados', shortLabel: 'Todos', color: 'var(--toy-muted)' },
+    { value: '1', label: 'Solo Activos', shortLabel: 'Activos', color: 'var(--toy-blue)' },
+    { value: '0', label: 'Solo Inactivos', shortLabel: 'Inactivos', color: 'var(--toy-red)' }
+  ];
 
   // Create / Edit Modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -40,6 +52,11 @@ export default function UsuariosPage() {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
   const [resetError, setResetError] = useState('');
+
+  // Confirm Toggle Status Modal
+  const [confirmToggleOpen, setConfirmToggleOpen] = useState(false);
+  const [userToToggle, setUserToToggle] = useState(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   // Fetch Roles
   useEffect(() => {
@@ -111,9 +128,55 @@ export default function UsuariosPage() {
     setModalOpen(true);
   };
 
+  // Form Validation
+  const validateForm = () => {
+    const errors = {};
+    const nameTrimmed = (formData.nombre_completo || '').trim();
+    if (!nameTrimmed) {
+      errors.nombre_completo = 'El nombre completo es obligatorio';
+    } else if (/[0-9]/.test(nameTrimmed)) {
+      errors.nombre_completo = 'El nombre no puede contener números';
+    } else if (!isValidName(nameTrimmed)) {
+      errors.nombre_completo = 'El nombre solo debe contener letras y tener al menos 3 caracteres';
+    }
+
+    const emailTrimmed = (formData.email || '').trim();
+    if (!emailTrimmed) {
+      errors.email = 'El correo electrónico es obligatorio';
+    } else if (!isValidEmail(emailTrimmed)) {
+      errors.email = 'Ingresa un formato de correo válido (ejemplo: usuario@empresa.com)';
+    }
+
+    if (modalMode === 'create') {
+      const pass = formData.password || '';
+      if (!pass) {
+        errors.password = 'La contraseña inicial es obligatoria';
+      } else if (pass.length < 8) {
+        errors.password = 'La contraseña debe tener al menos 8 caracteres';
+      } else if (!/[a-zA-Z]/.test(pass)) {
+        errors.password = 'La contraseña debe contener al menos una letra';
+      } else if (!/[0-9]/.test(pass)) {
+        errors.password = 'La contraseña debe contener al menos un número';
+      }
+    }
+
+    if (!formData.id_rol) {
+      errors.id_rol = 'Debes seleccionar un rol de acceso';
+    }
+
+    return errors;
+  };
+
   // Handle Form Submit
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error('Corrige los errores señalados en el formulario');
+      return;
+    }
+
     setFormErrors({});
     setSubmitting(true);
 
@@ -137,12 +200,9 @@ export default function UsuariosPage() {
       setModalOpen(false);
       fetchUsuarios();
     } catch (err) {
-      if (err.details && typeof err.details === 'object') {
-        const fieldErrors = {};
-        Object.entries(err.details).forEach(([key, val]) => {
-          fieldErrors[key] = Array.isArray(val) ? val.join(', ') : val;
-        });
-        setFormErrors(fieldErrors);
+      if (err.details) {
+        setFormErrors(parseApiErrors(err));
+        toast.error('Corrige los errores señalados en el formulario');
       } else {
         toast.error(err.message || 'Error al procesar la solicitud');
       }
@@ -151,19 +211,28 @@ export default function UsuariosPage() {
     }
   };
 
-  // Toggle Active State
-  const handleToggleEstado = async (user) => {
-    const actionName = user.activo ? 'desactivar' : 'activar';
-    if (!window.confirm(`¿Seguro que deseas ${actionName} al usuario ${user.nombre_completo}?`)) {
-      return;
-    }
+  // Open Confirm Dialog for Active State
+  const handleToggleEstado = (user) => {
+    setUserToToggle(user);
+    setConfirmToggleOpen(true);
+  };
+
+  // Execute Toggle Active State via Custom Modal
+  const handleConfirmToggleEstado = async () => {
+    if (!userToToggle) return;
+    const actionName = userToToggle.activo ? 'desactivado' : 'activado';
+    setTogglingStatus(true);
 
     try {
-      await api.patch(`/usuarios/${user.id_usuario}/estado`);
-      toast.success(`Usuario ${user.activo ? 'desactivado' : 'activado'} correctamente`);
+      await api.patch(`/usuarios/${userToToggle.id_usuario}/estado`);
+      toast.success(`Usuario ${actionName} correctamente`);
+      setConfirmToggleOpen(false);
+      setUserToToggle(null);
       fetchUsuarios();
     } catch (err) {
-      toast.error(err.message || `No se pudo ${actionName} el usuario`);
+      toast.error(err.message || `No se pudo cambiar el estado del usuario`);
+    } finally {
+      setTogglingStatus(false);
     }
   };
 
@@ -204,10 +273,7 @@ export default function UsuariosPage() {
       header: 'Nombre Completo',
       key: 'nombre_completo',
       render: (row) => (
-        <div>
-          <div style={{ fontWeight: 600 }}>{row.nombre_completo}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>ID: {row.id_usuario}</div>
-        </div>
+        <span style={{ fontWeight: 700, color: 'var(--toy-ink)' }}>{row.nombre_completo}</span>
       )
     },
     {
@@ -215,7 +281,7 @@ export default function UsuariosPage() {
       key: 'email'
     },
     {
-      header: 'Rol Asignado',
+      header: 'Rol',
       key: 'rol',
       render: (row) => {
         const badgeClass =
@@ -251,44 +317,32 @@ export default function UsuariosPage() {
       render: (row) => {
         const isSelf = authUser?.id_usuario === row.id_usuario;
         return (
-          <div className="flex gap-2">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
             <button
               type="button"
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-icon"
               onClick={() => handleOpenEdit(row)}
               title="Editar usuario"
+              aria-label="Editar usuario"
             >
-              <Pencil size={13} strokeWidth={2.4} />
-              <span>Editar</span>
+              <Pencil size={15} strokeWidth={2.2} />
             </button>
             <button
               type="button"
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-icon"
               onClick={() => handleOpenReset(row)}
               title="Restablecer clave"
+              aria-label="Restablecer clave"
             >
-              <KeyRound size={13} strokeWidth={2.4} />
-              <span>Clave</span>
+              <KeyRound size={15} strokeWidth={2.2} />
             </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${row.activo ? 'btn-danger' : 'btn-secondary'}`}
+            <ToySwitch
+              checked={row.activo}
               disabled={isSelf && row.activo}
-              onClick={() => handleToggleEstado(row)}
-              title={isSelf ? 'No puedes desactivar tu propia cuenta' : (row.activo ? 'Desactivar' : 'Activar')}
-            >
-              {row.activo ? (
-                <>
-                  <UserX size={13} strokeWidth={2.4} />
-                  <span>Desactivar</span>
-                </>
-              ) : (
-                <>
-                  <UserCheck size={13} strokeWidth={2.4} />
-                  <span>Activar</span>
-                </>
-              )}
-            </button>
+              onChange={() => handleToggleEstado(row)}
+              title={isSelf ? 'No puedes desactivar tu propia cuenta' : (row.activo ? 'Desactivar usuario' : 'Activar usuario')}
+              ariaLabel={row.activo ? 'Desactivar usuario' : 'Activar usuario'}
+            />
           </div>
         );
       }
@@ -296,75 +350,70 @@ export default function UsuariosPage() {
   ];
 
   return (
-    <div>
-      {/* Header */}
-      <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
-            <span style={{ width: '10px', height: '10px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
-            <h1 className="font-display" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
-              Gestión de Personal &amp; Cuentas
-            </h1>
-          </div>
-          <p style={{ color: 'var(--toy-muted)', fontSize: '0.84rem', fontWeight: 600 }}>
-            Control de usuarios del sistema, asignación de roles operativos y estados de acceso.
-          </p>
-        </div>
-
-        <PermissionGate permission="usuarios.gestionar">
-          <button type="button" className="btn btn-primary" onClick={handleOpenCreate}>
-            <UserPlus size={16} strokeWidth={2.4} />
-            <span>Nuevo Usuario</span>
-          </button>
-        </PermissionGate>
-      </div>
-
-      {/* Filter bar */}
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '240px' }}>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Buscar por nombre o correo..."
+    <>
+      {/* Tarjeta Unificada Reutilizable (PageCard) */}
+      <PageCard
+        title="Usuarios"
+        actions={
+          <>
+            <SearchInput
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
                 setPage(1);
               }}
+              ariaLabel="Buscar usuarios"
             />
-          </div>
 
-          <div style={{ width: '180px' }}>
-            <select
-              className="form-control"
+            <FilterDropdown
               value={filterEstado}
-              onChange={(e) => {
-                setFilterEstado(e.target.value);
+              onChange={(val) => {
+                setFilterEstado(val);
                 setPage(1);
               }}
-            >
-              <option value="">Todos los estados</option>
-              <option value="1">Solo Activos</option>
-              <option value="0">Solo Inactivos</option>
-            </select>
-          </div>
-        </div>
-      </div>
+              options={estadoOptions}
+              title="Filtrar por estado"
+            />
 
-      {/* Table */}
-      <DataTable
-        columns={columns}
-        data={usuarios}
-        loading={loading}
-        emptyMessage="No se encontraron usuarios registrados"
-        pagination={{
-          page,
-          totalPages,
-          totalRecords
-        }}
-        onPageChange={(newPage) => setPage(newPage)}
-      />
+            <PermissionGate permission="usuarios.gestionar">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleOpenCreate}
+                title="Nuevo usuario"
+                aria-label="Nuevo usuario"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  padding: 0,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <UserPlus size={20} strokeWidth={2.4} />
+              </button>
+            </PermissionGate>
+          </>
+        }
+      >
+        {/* Tabla Embebida */}
+        <DataTable
+          columns={columns}
+          data={usuarios}
+          loading={loading}
+          emptyMessage="No se encontraron usuarios registrados"
+          pagination={{
+            page,
+            totalPages,
+            totalRecords
+          }}
+          onPageChange={(newPage) => setPage(newPage)}
+          embedded
+        />
+      </PageCard>
 
       {/* Modal Crear / Editar */}
       <Modal
@@ -375,7 +424,7 @@ export default function UsuariosPage() {
           <>
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-danger"
               onClick={() => setModalOpen(false)}
               disabled={submitting}
             >
@@ -404,7 +453,19 @@ export default function UsuariosPage() {
               id="nombre_completo"
               className={`form-control ${formErrors.nombre_completo ? 'has-error' : ''}`}
               value={formData.nombre_completo}
-              onChange={(e) => setFormData({ ...formData, nombre_completo: e.target.value })}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (/[0-9]/.test(raw)) {
+                  setFormErrors((prev) => ({
+                    ...prev,
+                    nombre_completo: 'El nombre no puede contener números'
+                  }));
+                } else if (formErrors.nombre_completo) {
+                  setFormErrors((prev) => ({ ...prev, nombre_completo: undefined }));
+                }
+                const filtered = filterOutNumbers(raw);
+                setFormData({ ...formData, nombre_completo: filtered });
+              }}
               placeholder="Ej. Mario Estrada"
               required
             />
@@ -421,8 +482,23 @@ export default function UsuariosPage() {
               id="email"
               className={`form-control ${formErrors.email ? 'has-error' : ''}`}
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="ejemplo@jugueteria.local"
+              onChange={(e) => {
+                const val = e.target.value;
+                setFormData({ ...formData, email: val });
+                if (formErrors.email && isValidEmail(val)) {
+                  setFormErrors((prev) => ({ ...prev, email: undefined }));
+                }
+              }}
+              onBlur={() => {
+                const emailTrimmed = formData.email.trim();
+                if (emailTrimmed && !isValidEmail(emailTrimmed)) {
+                  setFormErrors((prev) => ({
+                    ...prev,
+                    email: 'Ingresa un formato de correo válido (ejemplo: usuario@empresa.com)'
+                  }));
+                }
+              }}
+              placeholder="ejemplo@jugueteria.com"
               required
             />
           </FormField>
@@ -485,7 +561,7 @@ export default function UsuariosPage() {
           <>
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-danger"
               onClick={() => setResetModalOpen(false)}
               disabled={submitting}
             >
@@ -522,6 +598,41 @@ export default function UsuariosPage() {
           </FormField>
         </form>
       </Modal>
-    </div>
+
+      {/* Alerta Personalizada para Desactivar / Activar Usuario */}
+      <ConfirmModal
+        isOpen={confirmToggleOpen}
+        onClose={() => {
+          if (!togglingStatus) {
+            setConfirmToggleOpen(false);
+            setUserToToggle(null);
+          }
+        }}
+        onConfirm={handleConfirmToggleEstado}
+        title={userToToggle?.activo ? '¿Desactivar usuario?' : '¿Activar usuario?'}
+        variant={userToToggle?.activo ? 'danger' : 'primary'}
+        confirmText={userToToggle?.activo ? 'Sí, desactivar' : 'Sí, activar'}
+        loading={togglingStatus}
+        message={
+          userToToggle?.activo ? (
+            <>
+              ¿Estás seguro de que deseas desactivar la cuenta de{' '}
+              <strong style={{ color: 'var(--toy-ink)' }}>{userToToggle.nombre_completo}</strong>?
+              <div style={{ marginTop: '0.45rem', fontSize: '0.84rem', color: 'var(--toy-muted)' }}>
+                El usuario perderá el acceso al sistema inmediatamente hasta que sea reactivado.
+              </div>
+            </>
+          ) : (
+            <>
+              ¿Estás seguro de que deseas activar la cuenta de{' '}
+              <strong style={{ color: 'var(--toy-ink)' }}>{userToToggle?.nombre_completo}</strong>?
+              <div style={{ marginTop: '0.45rem', fontSize: '0.84rem', color: 'var(--toy-muted)' }}>
+                El usuario podrá volver a ingresar al sistema con sus credenciales habituales.
+              </div>
+            </>
+          )
+        }
+      />
+    </>
   );
 }

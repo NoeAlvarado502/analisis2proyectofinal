@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, AlertCircle, ShieldCheck, Search, UserCheck, LogIn } from 'lucide-react';
+import { ToyBrick, AlertCircle, User, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import FormField from '../components/FormField';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -33,25 +34,45 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickFill = (demoEmail) => {
-    setEmail(demoEmail);
-    setPassword('Admin1234!');
-    setErrorMsg('');
-  };
-
   return (
     <div
       style={{
         minHeight: '100vh',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '1.5rem',
-        backgroundColor: 'var(--toy-cream)',
-        backgroundImage: 'radial-gradient(var(--toy-cream-dark) 1.5px, transparent 1.5px)',
-        backgroundSize: '24px 24px'
+        backgroundColor: 'transparent'
       }}
     >
+      {/* Brand Header fuera de la tarjeta */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.85rem',
+          marginBottom: '1.75rem'
+        }}
+      >
+        <ToyBrick size={34} strokeWidth={2.4} style={{ color: 'var(--toy-ink)' }} />
+        <h1
+          className="font-display"
+          style={{
+            fontSize: '1.75rem',
+            fontWeight: 800,
+            color: 'var(--toy-ink)',
+            letterSpacing: '0.01em',
+            lineHeight: 1,
+            margin: 0,
+            textTransform: 'uppercase'
+          }}
+        >
+          JUGUETERÍA QUETZAL
+        </h1>
+      </div>
+
       <div
         className="card"
         style={{
@@ -64,149 +85,116 @@ export default function LoginPage() {
           boxShadow: '0 12px 32px rgba(58, 42, 34, 0.1), 0 2px 6px rgba(58, 42, 34, 0.04)'
         }}
       >
-        {/* Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        {errorMsg && (
           <div
             style={{
-              width: '50px',
-              height: '50px',
-              margin: '0 auto 0.85rem',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, var(--toy-blue), var(--toy-deep-blue))',
-              color: '#FFFFFF',
+              padding: '0.85rem 1rem',
+              borderRadius: '14px',
+              backgroundColor: '#FEF2F2',
+              border: '2px solid var(--toy-red)',
+              color: '#991B1B',
+              fontSize: '0.86rem',
+              marginBottom: '1.25rem',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(8, 123, 181, 0.3)'
+              gap: '0.65rem',
+              fontWeight: 700
             }}
           >
-            <Package size={26} strokeWidth={2.4} />
+            <AlertCircle size={18} strokeWidth={2.4} />
+            <span>{errorMsg}</span>
           </div>
+        )}
 
-          <h1 className="font-display" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--toy-ink)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
-            JUGUETERÍA <span style={{ color: 'var(--toy-blue)' }}>QUETZAL</span>
-          </h1>
-
-          <p style={{ color: 'var(--toy-muted)', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: '0.25rem' }}>
-            Sistema de Gestión
-          </p>
-        </div>
-
-        {/* Section Intro */}
-        <div style={{ textAlign: 'center', marginBottom: '1.25rem', paddingBottom: '0.9rem', borderBottom: '1.5px solid var(--toy-border-light)' }}>
-          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--toy-ink)' }}>
-            Acceso al Sistema
-          </h2>
-          <p style={{ color: 'var(--toy-muted)', fontSize: '0.82rem', fontWeight: 600, marginTop: '2px' }}>
-            Ingresa tus credenciales para continuar
-          </p>
-        </div>
-
-          {errorMsg && (
-            <div
-              style={{
-                padding: '0.85rem 1rem',
-                borderRadius: '14px',
-                backgroundColor: '#FEF2F2',
-                border: '2px solid var(--toy-red)',
-                color: '#991B1B',
-                fontSize: '0.86rem',
-                marginBottom: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.65rem',
-                fontWeight: 700
-              }}
-            >
-              <AlertCircle size={18} strokeWidth={2.4} />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <FormField label="Correo electrónico" name="email" required>
+        <form onSubmit={handleSubmit}>
+          <FormField label="Usuario" name="email">
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <User
+                size={19}
+                strokeWidth={2.4}
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  color: 'var(--toy-muted)',
+                  pointerEvents: 'none'
+                }}
+              />
               <input
                 id="email"
-                type="email"
+                type="text"
                 className="form-control"
-                placeholder="usuario@jugueteria.local"
+                placeholder="Usuario"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
+                autoComplete="username"
                 required
+                style={{ paddingLeft: '2.5rem' }}
               />
-            </FormField>
+            </div>
+          </FormField>
 
-            <FormField label="Contraseña" name="password" required>
+          <FormField label="Contraseña" name="password">
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Lock
+                size={19}
+                strokeWidth={2.4}
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  color: 'var(--toy-muted)',
+                  pointerEvents: 'none'
+                }}
+              />
               <input
                 id="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 className="form-control"
-                placeholder="••••••••"
+                placeholder="Contraseña"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
                 required
+                style={{ paddingLeft: '2.5rem', paddingRight: '2.75rem' }}
               />
-            </FormField>
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', marginTop: '0.6rem', height: '46px' }}
-              disabled={loading}
-            >
-              <LogIn size={18} strokeWidth={2.4} />
-              <span>{loading ? 'Verificando...' : 'Iniciar Sesión'}</span>
-            </button>
-          </form>
-
-          {/* Quick Access Demo Accounts */}
-          <div style={{ marginTop: '1.8rem', paddingTop: '1.3rem', borderTop: '2px solid var(--toy-border)' }}>
-            <p
-              style={{
-                fontSize: '0.74rem',
-                textTransform: 'uppercase',
-                color: 'var(--toy-muted)',
-                letterSpacing: '0.06em',
-                fontWeight: 800,
-                marginBottom: '0.75rem',
-                textAlign: 'center'
-              }}
-            >
-              Acceso Rápido para Demostración
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.55rem' }}>
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => handleQuickFill('admin@jugueteria.local')}
-                title="admin@jugueteria.local"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--toy-muted)',
+                  borderRadius: '8px',
+                  transition: 'color 0.15s ease'
+                }}
+                title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
               >
-                <ShieldCheck size={14} strokeWidth={2.4} />
-                <span>Admin</span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => handleQuickFill('supervisor@jugueteria.local')}
-                title="supervisor@jugueteria.local"
-              >
-                <Search size={14} strokeWidth={2.4} />
-                <span>Superv.</span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => handleQuickFill('operador@jugueteria.local')}
-                title="operador@jugueteria.local"
-              >
-                <UserCheck size={14} strokeWidth={2.4} />
-                <span>Operador</span>
+                {showPassword ? (
+                  <EyeOff size={19} strokeWidth={2.4} />
+                ) : (
+                  <Eye size={19} strokeWidth={2.4} />
+                )}
               </button>
             </div>
-          </div>
-        </div>
+          </FormField>
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: '100%', marginTop: '0.6rem', height: '46px', fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.02em' }}
+            disabled={loading}
+          >
+            <span>{loading ? 'Verificando...' : 'Ingresar'}</span>
+          </button>
+        </form>
       </div>
-    );
-  }
+    </div>
+  );
+}

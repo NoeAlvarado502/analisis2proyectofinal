@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PackagePlus, Pencil, EyeOff, Eye, AlertTriangle, AlertCircle, Plus, Boxes, List, Package, Sparkles } from 'lucide-react';
+import { PackagePlus, Pencil, AlertTriangle, AlertCircle, Plus, Boxes, List, Package, Sparkles } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
@@ -7,6 +7,12 @@ import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import FormField from '../components/FormField';
 import PermissionGate from '../components/PermissionGate';
+import PageCard from '../components/PageCard';
+import SearchInput from '../components/SearchInput';
+import FilterDropdown from '../components/FilterDropdown';
+import ToySwitch from '../components/ToySwitch';
+import ConfirmModal from '../components/ConfirmModal';
+import { parseApiErrors } from '../utils/formValidators';
 
 import {
   NIVELES_CANTIDAD,
@@ -36,12 +42,23 @@ export default function ProductosPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
 
+  const estadoOptions = [
+    { value: '', label: 'Todos los estados', shortLabel: 'Todos', color: 'var(--toy-muted)' },
+    { value: '1', label: 'Solo Activos', shortLabel: 'Activos', color: 'var(--toy-blue)' },
+    { value: '0', label: 'Solo Inactivos', shortLabel: 'Inactivos', color: 'var(--toy-red)' }
+  ];
+
   // Modal Create / Edit Producto
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [selectedProducto, setSelectedProducto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+
+  // Confirm Modal for Toggle Estado
+  const [confirmToggleOpen, setConfirmToggleOpen] = useState(false);
+  const [prodToToggle, setProdToToggle] = useState(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   // Product Form State
   const [formData, setFormData] = useState({
@@ -190,7 +207,7 @@ export default function ProductosPage() {
     }
   };
 
-  // Open Edit Modal (fetches product detail with current tiers)
+  // Open Edit Modal
   const handleOpenEdit = async (prod) => {
     setModalMode('edit');
     setSelectedProducto(prod);
@@ -239,7 +256,6 @@ export default function ProductosPage() {
     if (isNaN(retailPrice) || retailPrice <= 0) {
       errors.escalas = 'El Nivel 1 (Precio Menudeo) es obligatorio y debe ser mayor a 0.00';
     } else {
-      // Validate non-increasing price monotonicity
       let lastPrice = retailPrice;
       for (const cant of NIVELES_CANTIDAD) {
         if (cant === 1) continue;
@@ -270,7 +286,6 @@ export default function ProductosPage() {
 
     setSubmitting(true);
     try {
-      // Build active scales array
       const escalasPayload = [];
       NIVELES_CANTIDAD.forEach((cant) => {
         const val = escalasState[cant];
@@ -304,12 +319,9 @@ export default function ProductosPage() {
       setModalOpen(false);
       fetchProductos();
     } catch (err) {
-      if (err.details && typeof err.details === 'object') {
-        const fieldErrors = {};
-        Object.entries(err.details).forEach(([key, val]) => {
-          fieldErrors[key] = Array.isArray(val) ? val.join(', ') : val;
-        });
-        setFormErrors(fieldErrors);
+      if (err.details) {
+        setFormErrors(parseApiErrors(err));
+        toast.error('Corrige los errores señalados en el formulario');
       } else {
         toast.error(err.message || 'Error al guardar el producto');
       }
@@ -318,19 +330,28 @@ export default function ProductosPage() {
     }
   };
 
-  // Toggle Estado Producto
-  const handleToggleEstado = async (prod) => {
-    const actionName = prod.activo ? 'inactivar' : 'activar';
-    if (!window.confirm(`¿Seguro que deseas ${actionName} el producto "${prod.nombre}" (${prod.codigo_sku})?`)) {
-      return;
-    }
+  // Open Confirm Dialog for Active State
+  const handleToggleEstado = (prod) => {
+    setProdToToggle(prod);
+    setConfirmToggleOpen(true);
+  };
+
+  // Execute Toggle Active State via Custom Modal
+  const handleConfirmToggleEstado = async () => {
+    if (!prodToToggle) return;
+    const actionName = prodToToggle.activo ? 'inactivado' : 'reactivado';
+    setTogglingStatus(true);
 
     try {
-      await api.patch(`/productos/${prod.id_producto}/estado`);
-      toast.success(`Producto ${prod.activo ? 'inactivado' : 'reactivado'} correctamente`);
+      await api.patch(`/productos/${prodToToggle.id_producto}/estado`);
+      toast.success(`Producto ${actionName} correctamente`);
+      setConfirmToggleOpen(false);
+      setProdToToggle(null);
       fetchProductos();
     } catch (err) {
-      toast.error(err.message || `No se pudo ${actionName} el producto`);
+      toast.error(err.message || `No se pudo cambiar el estado del producto`);
+    } finally {
+      setTogglingStatus(false);
     }
   };
 
@@ -378,7 +399,7 @@ export default function ProductosPage() {
     }
   };
 
-  // Columns definition
+  // Columns definition for DataTable
   const columns = [
     {
       header: 'SKU / Código',
@@ -390,9 +411,9 @@ export default function ProductosPage() {
       key: 'nombre',
       render: (row) => (
         <div>
-          <div style={{ fontWeight: 600 }}>{row.nombre}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-            Categoría: {row.categoria} {row.marca ? `· Marca: ${row.marca}` : ''}
+          <div style={{ fontWeight: 700, color: 'var(--toy-ink)' }}>{row.nombre}</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--toy-muted)', fontWeight: 600 }}>
+            {row.categoria} {row.marca ? `· Marca: ${row.marca}` : ''}
           </div>
         </div>
       )
@@ -450,395 +471,370 @@ export default function ProductosPage() {
       header: 'Acciones',
       key: 'acciones',
       render: (row) => (
-        <div className="flex gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
           <button
             type="button"
-            className="btn btn-secondary btn-sm"
+            className="btn btn-secondary btn-icon"
             onClick={() => handleOpenEdit(row)}
             title="Editar producto y escalas"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            aria-label="Editar producto y escalas"
           >
-            <Pencil size={13} strokeWidth={2.4} /> Editar
+            <Pencil size={15} strokeWidth={2.2} />
           </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${row.activo ? 'btn-danger' : 'btn-secondary'}`}
-            onClick={() => handleToggleEstado(row)}
-            title={row.activo ? 'Inactivar producto' : 'Reactivar producto'}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-          >
-            {row.activo ? (
-              <>
-                <EyeOff size={13} strokeWidth={2.4} /> Inactivar
-              </>
-            ) : (
-              <>
-                <Eye size={13} strokeWidth={2.4} /> Reactivar
-              </>
-            )}
-          </button>
+          <ToySwitch
+            checked={row.activo}
+            onChange={() => handleToggleEstado(row)}
+            title={row.activo ? 'Inactivar producto' : 'Activar producto'}
+            ariaLabel={row.activo ? 'Inactivar producto' : 'Activar producto'}
+          />
         </div>
       )
     });
   }
 
   return (
-    <div>
-      {/* Page Header */}
-      <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
-            <span style={{ width: '10px', height: '10px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
-            <h1 className="font-display" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
-              Catálogo de Juguetes &amp; Precios por Volumen
-            </h1>
-          </div>
-          <p style={{ color: 'var(--toy-muted)', fontSize: '0.84rem', fontWeight: 600 }}>
-            Control de inventario en tiempo real y configuración de escalas de precio al por mayor y menor.
-          </p>
-        </div>
-
-        <PermissionGate permission="productos.gestionar">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleOpenCreate}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
-          >
-            <PackagePlus size={16} strokeWidth={2.4} />
-            <span>Nuevo Producto</span>
-          </button>
-        </PermissionGate>
-      </div>
-
-      {/* Filter Toolbar & View Switcher */}
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1.2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
-          
-          {/* Category Chips Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => { setFilterCategoria(''); setPage(1); }}
-              style={{
-                padding: '0.45rem 1rem',
-                borderRadius: '999px',
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                border: '2px solid',
-                cursor: 'pointer',
-                backgroundColor: filterCategoria === '' ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.7)',
-                color: filterCategoria === '' ? '#FFFFFF' : 'var(--toy-ink)',
-                borderColor: filterCategoria === '' ? 'var(--toy-deep-blue)' : 'var(--toy-border)',
-                boxShadow: filterCategoria === '' ? '0 2px 6px rgba(25, 168, 232, 0.35)' : 'none',
-                transition: 'all 0.12s ease'
-              }}
-            >
-              Todas las Categorías
-            </button>
-            {categorias.map((c) => {
-              const isActive = String(filterCategoria) === String(c.id_categoria);
-              return (
-                <button
-                  key={c.id_categoria}
-                  type="button"
-                  onClick={() => { setFilterCategoria(c.id_categoria); setPage(1); }}
-                  style={{
-                    padding: '0.45rem 1rem',
-                    borderRadius: '999px',
-                    fontSize: '0.78rem',
-                    fontWeight: 800,
-                    border: '2px solid',
-                    cursor: 'pointer',
-                    backgroundColor: isActive ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.7)',
-                    color: isActive ? '#FFFFFF' : 'var(--toy-ink)',
-                    borderColor: isActive ? 'var(--toy-deep-blue)' : 'var(--toy-border)',
-                    boxShadow: isActive ? '0 2px 6px rgba(25, 168, 232, 0.35)' : 'none',
-                    transition: 'all 0.12s ease'
-                  }}
-                >
-                  {c.nombre}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* View Mode Switcher */}
-          <div
-            style={{
-              backgroundColor: 'rgba(255, 244, 221, 0.85)',
-              padding: '0.35rem',
-              borderRadius: '999px',
-              border: '2px solid var(--toy-border)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.25rem'
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setViewMode('blister')}
-              className={viewMode === 'blister' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
-              style={{
-                borderRadius: '999px',
-                height: '32px',
-                padding: '0 0.85rem',
-                fontSize: '0.78rem',
-                border: 'none',
-                boxShadow: viewMode === 'blister' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
-              }}
-            >
-              <Boxes size={14} strokeWidth={2.4} />
-              <span>Blister Cards</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={viewMode === 'table' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
-              style={{
-                borderRadius: '999px',
-                height: '32px',
-                padding: '0 0.85rem',
-                fontSize: '0.78rem',
-                border: 'none',
-                boxShadow: viewMode === 'table' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
-              }}
-            >
-              <List size={14} strokeWidth={2.4} />
-              <span>Tabla</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Search Input & Status Filter */}
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', paddingTop: '0.75rem', borderTop: '1.5px solid var(--toy-border)' }}>
-          <div style={{ flex: 1, minWidth: '220px' }}>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Buscar por SKU o nombre de juguete..."
+    <>
+      <PageCard
+        title="Productos"
+        actions={
+          <>
+            <SearchInput
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
                 setPage(1);
               }}
+              ariaLabel="Buscar juguetes"
             />
-          </div>
 
-          <div style={{ width: '180px' }}>
-            <select
-              className="form-control"
+            <FilterDropdown
               value={filterEstado}
-              onChange={(e) => {
-                setFilterEstado(e.target.value);
+              onChange={(val) => {
+                setFilterEstado(val);
                 setPage(1);
               }}
+              options={estadoOptions}
+              title="Filtrar por estado"
+            />
+
+            {/* View Mode Switcher */}
+            <div
+              style={{
+                backgroundColor: 'rgba(255, 244, 221, 0.85)',
+                padding: '0.25rem',
+                borderRadius: '999px',
+                border: '2px solid var(--toy-border)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}
             >
-              <option value="">Todos los estados</option>
-              <option value="1">Solo Activos</option>
-              <option value="0">Solo Inactivos</option>
-            </select>
-          </div>
+              <button
+                type="button"
+                onClick={() => setViewMode('blister')}
+                className={viewMode === 'blister' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+                style={{
+                  borderRadius: '999px',
+                  height: '34px',
+                  padding: '0 0.85rem',
+                  fontSize: '0.78rem',
+                  border: 'none',
+                  boxShadow: viewMode === 'blister' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
+                }}
+              >
+                <Boxes size={14} strokeWidth={2.4} />
+                <span>Blister</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={viewMode === 'table' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+                style={{
+                  borderRadius: '999px',
+                  height: '34px',
+                  padding: '0 0.85rem',
+                  fontSize: '0.78rem',
+                  border: 'none',
+                  boxShadow: viewMode === 'table' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
+                }}
+              >
+                <List size={14} strokeWidth={2.4} />
+                <span>Tabla</span>
+              </button>
+            </div>
+
+            <PermissionGate permission="productos.gestionar">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleOpenCreate}
+                title="Nuevo producto"
+                aria-label="Nuevo producto"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  padding: 0,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <PackagePlus size={20} strokeWidth={2.4} />
+              </button>
+            </PermissionGate>
+          </>
+        }
+      >
+        {/* Category Chips Bar */}
+        <div
+          style={{
+            padding: '0.85rem 1.25rem',
+            borderBottom: '1.5px solid var(--toy-border-light)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+            backgroundColor: 'rgba(255, 244, 221, 0.25)'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => { setFilterCategoria(''); setPage(1); }}
+            style={{
+              padding: '0.35rem 0.85rem',
+              borderRadius: '999px',
+              fontSize: '0.76rem',
+              fontWeight: 800,
+              border: '2px solid',
+              cursor: 'pointer',
+              backgroundColor: filterCategoria === '' ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.7)',
+              color: filterCategoria === '' ? '#FFFFFF' : 'var(--toy-ink)',
+              borderColor: filterCategoria === '' ? 'var(--toy-deep-blue)' : 'var(--toy-border)',
+              boxShadow: filterCategoria === '' ? '0 2px 6px rgba(25, 168, 232, 0.35)' : 'none',
+              transition: 'all 0.12s ease'
+            }}
+          >
+            Todas las Categorías
+          </button>
+          {categorias.map((c) => {
+            const isActive = String(filterCategoria) === String(c.id_categoria);
+            return (
+              <button
+                key={c.id_categoria}
+                type="button"
+                onClick={() => { setFilterCategoria(c.id_categoria); setPage(1); }}
+                style={{
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '999px',
+                  fontSize: '0.76rem',
+                  fontWeight: 800,
+                  border: '2px solid',
+                  cursor: 'pointer',
+                  backgroundColor: isActive ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.7)',
+                  color: isActive ? '#FFFFFF' : 'var(--toy-ink)',
+                  borderColor: isActive ? 'var(--toy-deep-blue)' : 'var(--toy-border)',
+                  boxShadow: isActive ? '0 2px 6px rgba(25, 168, 232, 0.35)' : 'none',
+                  transition: 'all 0.12s ease'
+                }}
+              >
+                {c.nombre}
+              </button>
+            );
+          })}
         </div>
-      </div>
 
-      {/* Main Content: Blister Cards or Data Table */}
-      {viewMode === 'blister' ? (
-        <div>
-          {loading ? (
-            <div className="card text-center" style={{ padding: '3.5rem' }}>
-              <span style={{ fontWeight: 800, color: 'var(--toy-muted)' }}>Cargando catálogo de juguetes...</span>
-            </div>
-          ) : productos.length === 0 ? (
-            <div className="card text-center" style={{ padding: '3.5rem' }}>
-              <Package size={44} color="var(--toy-muted)" style={{ margin: '0 auto 0.85rem' }} />
-              <h3 className="font-display" style={{ fontSize: '1.25rem', color: 'var(--toy-ink)' }}>No se encontraron juguetes</h3>
-              <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Prueba con otro término de búsqueda o categoría.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '1.8rem' }}>
-              {productos.map((p, idx) => {
-                const isLowStock = Number(p.stock_actual ?? 0) <= Number(p.stock_minimo ?? 0);
-                const checkerClass = idx % 3 === 0 ? 'bg-checker-blue' : idx % 3 === 1 ? 'bg-checker-gold' : 'bg-checker-purple';
+        {/* Main Content: Blister Cards or Data Table */}
+        {viewMode === 'blister' ? (
+          <div style={{ padding: '1.25rem' }}>
+            {loading ? (
+              <div className="empty-state" style={{ padding: '3.5rem' }}>
+                <span style={{ fontWeight: 800, color: 'var(--toy-muted)' }}>Cargando catálogo de juguetes...</span>
+              </div>
+            ) : productos.length === 0 ? (
+              <div className="empty-state" style={{ padding: '3.5rem', textAlign: 'center' }}>
+                <Package size={44} color="var(--toy-muted)" style={{ margin: '0 auto 0.85rem', display: 'block' }} />
+                <h3 className="font-display" style={{ fontSize: '1.25rem', color: 'var(--toy-ink)', margin: 0 }}>No se encontraron juguetes</h3>
+                <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600, margin: '0.35rem 0 0' }}>Prueba con otro término de búsqueda o categoría.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '1.8rem' }}>
+                {productos.map((p, idx) => {
+                  const isLowStock = Number(p.stock_actual ?? 0) <= Number(p.stock_minimo ?? 0);
+                  const checkerClass = idx % 3 === 0 ? 'bg-checker-blue' : idx % 3 === 1 ? 'bg-checker-gold' : 'bg-checker-purple';
 
-                return (
-                  <div
-                    key={p.id_producto}
-                    className="toy-cardboard-pack"
-                    style={{
-                      backgroundColor: '#FFFFFF',
-                      border: '2px solid var(--toy-border)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    {/* Packaging Header Strip with Euro Hanger */}
-                    <div className={checkerClass} style={{ padding: '0.85rem 1rem 0.75rem', textAlign: 'center', opacity: p.activo ? 1 : 0.65 }}>
-                      <div className="euro-hanger-punch" style={{ marginBottom: '0.45rem' }} />
-                      <h3
-                        className="toy-card-title"
-                        style={{
-                          fontSize: '0.92rem',
-                          textOverflow: 'ellipsis',
-                          overflow: 'hidden',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {p.nombre}
-                      </h3>
-                    </div>
-
-                    {/* Molded Toy Blister Capsule Frame */}
-                    <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                      <div
-                        className="toy-bubble-frame"
-                        style={{
-                          padding: '1.25rem 0.85rem',
-                          textAlign: 'center',
-                          marginBottom: '0.85rem',
-                          backgroundColor: 'rgba(255, 244, 221, 0.45)',
-                          minHeight: '130px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.5rem'
-                        }}
-                      >
-                        <div
+                  return (
+                    <div
+                      key={p.id_producto}
+                      className="toy-cardboard-pack"
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        border: '2px solid var(--toy-border)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between'
+                      }}
+                    >
+                      {/* Packaging Header Strip with Euro Hanger */}
+                      <div className={checkerClass} style={{ padding: '0.85rem 1rem 0.75rem', textAlign: 'center', opacity: p.activo ? 1 : 0.65 }}>
+                        <div className="euro-hanger-punch" style={{ marginBottom: '0.45rem' }} />
+                        <h3
+                          className="toy-card-title"
                           style={{
-                            width: '54px',
-                            height: '54px',
-                            borderRadius: '18px',
-                            background: 'linear-gradient(135deg, var(--toy-blue), var(--toy-deep-blue))',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#FFFFFF',
-                            boxShadow: '0 4px 12px rgba(8, 123, 181, 0.28)'
+                            fontSize: '0.92rem',
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                            margin: 0
                           }}
                         >
-                          <Package size={28} strokeWidth={2.4} />
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                          <code>{p.codigo_sku}</code>
-                          <span className="badge badge-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.55rem' }}>
-                            {p.categoria || 'Juguete'}
-                          </span>
-                        </div>
-
-                        {p.marca && (
-                          <span style={{ fontSize: '0.72rem', color: 'var(--toy-muted)', fontWeight: 700 }}>
-                            Marca: {p.marca}
-                          </span>
-                        )}
+                          {p.nombre}
+                        </h3>
                       </div>
 
-                      {/* Package Footer: Collector Price & Stock */}
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
-                          <div>
-                            <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: 'var(--toy-muted)', fontWeight: 800, display: 'block' }}>
-                              Precio Menudeo (1 ud)
-                            </span>
-                            <span className="font-display" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
-                              Q{Number(p.precio_menudeo ?? 0).toFixed(2)}
+                      {/* Molded Toy Blister Capsule Frame */}
+                      <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div
+                          className="toy-bubble-frame"
+                          style={{
+                            padding: '1.25rem 0.85rem',
+                            textAlign: 'center',
+                            marginBottom: '0.85rem',
+                            backgroundColor: 'rgba(255, 244, 221, 0.45)',
+                            minHeight: '130px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '54px',
+                              height: '54px',
+                              borderRadius: '18px',
+                              background: 'linear-gradient(135deg, var(--toy-blue), var(--toy-deep-blue))',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#FFFFFF',
+                              boxShadow: '0 4px 12px rgba(8, 123, 181, 0.28)'
+                            }}
+                          >
+                            <Package size={28} strokeWidth={2.4} />
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                            <code>{p.codigo_sku}</code>
+                            <span className="badge badge-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.55rem' }}>
+                              {p.categoria || 'Juguete'}
                             </span>
                           </div>
 
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: 'var(--toy-muted)', fontWeight: 800, display: 'block' }}>
-                              Stock
+                          {p.marca && (
+                            <span style={{ fontSize: '0.72rem', color: 'var(--toy-muted)', fontWeight: 700 }}>
+                              Marca: {p.marca}
                             </span>
-                            <span
-                              className={`badge ${isLowStock ? 'badge-danger' : 'badge-success'}`}
-                              style={{ fontSize: '0.72rem' }}
-                            >
-                              {p.stock_actual ?? 0} uds
-                            </span>
-                          </div>
+                          )}
                         </div>
 
-                        {canManageProductos && (
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', paddingTop: '0.65rem', borderTop: '1.5px solid var(--toy-border)' }}>
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => handleOpenEdit(p)}
-                            >
-                              <Pencil size={13} strokeWidth={2.4} />
-                              <span>Editar</span>
-                            </button>
-                            <button
-                              type="button"
-                              className={`btn btn-sm ${p.activo ? 'btn-danger' : 'btn-secondary'}`}
-                              onClick={() => handleToggleEstado(p)}
-                            >
-                              {p.activo ? (
-                                <>
-                                  <EyeOff size={13} strokeWidth={2.4} />
-                                  <span>Inactivar</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Eye size={13} strokeWidth={2.4} />
-                                  <span>Activar</span>
-                                </>
-                              )}
-                            </button>
+                        {/* Package Footer: Collector Price & Stock */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
+                            <div>
+                              <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: 'var(--toy-muted)', fontWeight: 800, display: 'block' }}>
+                                Precio Menudeo (1 ud)
+                              </span>
+                              <span className="font-display" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+                                Q{Number(p.precio_menudeo ?? 0).toFixed(2)}
+                              </span>
+                            </div>
+
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: 'var(--toy-muted)', fontWeight: 800, display: 'block' }}>
+                                Stock
+                              </span>
+                              <span
+                                className={`badge ${isLowStock ? 'badge-danger' : 'badge-success'}`}
+                                style={{ fontSize: '0.72rem' }}
+                              >
+                                {p.stock_actual ?? 0} uds
+                              </span>
+                            </div>
                           </div>
-                        )}
+
+                          {canManageProductos && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.65rem', borderTop: '1.5px solid var(--toy-border)' }}>
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-icon"
+                                onClick={() => handleOpenEdit(p)}
+                                title="Editar producto y escalas"
+                                aria-label="Editar producto y escalas"
+                              >
+                                <Pencil size={15} strokeWidth={2.2} />
+                              </button>
+                              <ToySwitch
+                                checked={p.activo}
+                                onChange={() => handleToggleEstado(p)}
+                                title={p.activo ? 'Inactivar producto' : 'Activar producto'}
+                                ariaLabel={p.activo ? 'Inactivar producto' : 'Activar producto'}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Blister View Pagination */}
-          {totalPages > 1 && (
-            <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.4rem' }}>
-              <span style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--toy-muted)' }}>
-                Página {page} de {totalPages} ({totalRecords} juguetes en total)
-              </span>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  disabled={page <= 1 || loading}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Anterior
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  disabled={page >= totalPages || loading}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Siguiente
-                </button>
+                  );
+                })}
               </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={productos}
-          loading={loading}
-          emptyMessage="No se encontraron productos en el catálogo"
-          pagination={{
-            page,
-            totalPages,
-            totalRecords
-          }}
-          onPageChange={(newPage) => setPage(newPage)}
-        />
-      )}
+            )}
+
+            {/* Blister View Pagination */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.85rem 0.5rem', borderTop: '1.5px solid var(--toy-border-light)' }}>
+                <span style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--toy-muted)' }}>
+                  Página {page} de {totalPages} ({totalRecords} juguetes en total)
+                </span>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={page <= 1 || loading}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={page >= totalPages || loading}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={productos}
+            loading={loading}
+            emptyMessage="No se encontraron productos en el catálogo"
+            pagination={{
+              page,
+              totalPages,
+              totalRecords
+            }}
+            onPageChange={(newPage) => setPage(newPage)}
+            embedded
+          />
+        )}
+      </PageCard>
 
       {/* Modal Crear / Editar Producto */}
       <Modal
@@ -850,7 +846,7 @@ export default function ProductosPage() {
           <>
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-danger"
               onClick={() => setModalOpen(false)}
               disabled={submitting}
             >
@@ -921,9 +917,9 @@ export default function ProductosPage() {
                   type="button"
                   className="btn btn-ghost btn-sm"
                   onClick={() => setQuickCatOpen(true)}
-                  style={{ padding: '0 6px', fontSize: '0.75rem', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                  style={{ padding: '0 6px', fontSize: '0.75rem', color: 'var(--toy-blue)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                 >
-                  <Plus size={12} /> Nueva
+                  <Plus size={12} strokeWidth={2.4} /> Nueva
                 </button>
               </div>
               <select
@@ -951,9 +947,9 @@ export default function ProductosPage() {
                   type="button"
                   className="btn btn-ghost btn-sm"
                   onClick={() => setQuickMarcaOpen(true)}
-                  style={{ padding: '0 6px', fontSize: '0.75rem', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                  style={{ padding: '0 6px', fontSize: '0.75rem', color: 'var(--toy-blue)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                 >
-                  <Plus size={12} /> Nueva
+                  <Plus size={12} strokeWidth={2.4} /> Nueva
                 </button>
               </div>
               <select
@@ -1013,7 +1009,7 @@ export default function ProductosPage() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
-                  <h4 className="font-display" style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--toy-ink)' }}>
+                  <h4 className="font-display" style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--toy-ink)', margin: 0 }}>
                     Escalas de Precio por Volumen (10 Niveles)
                   </h4>
                   <span
@@ -1030,7 +1026,7 @@ export default function ProductosPage() {
                     {autoCalcularActivo ? '⚡ Auto-Cálculo Activo' : 'Manual'}
                   </span>
                 </div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 600, marginTop: '2px' }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 600, marginTop: '2px', marginBottom: 0 }}>
                   Al ingresar el precio de menudeo (1 ud), el sistema genera automáticamente descuentos decrecientes por mayoreo.
                 </p>
               </div>
@@ -1231,7 +1227,7 @@ export default function ProductosPage() {
         title="Crear Nueva Categoría"
         footer={
           <>
-            <button type="button" className="btn btn-secondary" onClick={() => setQuickCatOpen(false)}>
+            <button type="button" className="btn btn-danger" onClick={() => setQuickCatOpen(false)}>
               Cancelar
             </button>
             <button type="button" className="btn btn-primary" onClick={handleCreateCategoria}>
@@ -1270,7 +1266,7 @@ export default function ProductosPage() {
         title="Crear Nueva Marca"
         footer={
           <>
-            <button type="button" className="btn btn-secondary" onClick={() => setQuickMarcaOpen(false)}>
+            <button type="button" className="btn btn-danger" onClick={() => setQuickMarcaOpen(false)}>
               Cancelar
             </button>
             <button type="button" className="btn btn-primary" onClick={handleCreateMarca}>
@@ -1292,6 +1288,41 @@ export default function ProductosPage() {
           </FormField>
         </form>
       </Modal>
-    </div>
+
+      {/* Modal Confirmar Desactivar / Activar Producto */}
+      <ConfirmModal
+        isOpen={confirmToggleOpen}
+        onClose={() => {
+          if (!togglingStatus) {
+            setConfirmToggleOpen(false);
+            setProdToToggle(null);
+          }
+        }}
+        onConfirm={handleConfirmToggleEstado}
+        title={prodToToggle?.activo ? '¿Inactivar producto?' : '¿Reactivar producto?'}
+        variant={prodToToggle?.activo ? 'danger' : 'primary'}
+        confirmText={prodToToggle?.activo ? 'Sí, inactivar' : 'Sí, reactivar'}
+        loading={togglingStatus}
+        message={
+          prodToToggle?.activo ? (
+            <>
+              ¿Estás seguro de que deseas inactivar el juguete{' '}
+              <strong style={{ color: 'var(--toy-ink)' }}>{prodToToggle.nombre}</strong> (<code>{prodToToggle.codigo_sku}</code>)?
+              <div style={{ marginTop: '0.45rem', fontSize: '0.84rem', color: 'var(--toy-muted)' }}>
+                No podrá ser agregado a nuevas órdenes de venta hasta que sea reactivado.
+              </div>
+            </>
+          ) : (
+            <>
+              ¿Estás seguro de que deseas reactivar el juguete{' '}
+              <strong style={{ color: 'var(--toy-ink)' }}>{prodToToggle?.nombre}</strong> (<code>{prodToToggle?.codigo_sku}</code>)?
+              <div style={{ marginTop: '0.45rem', fontSize: '0.84rem', color: 'var(--toy-muted)' }}>
+                Estará disponible nuevamente en el catálogo y punto de venta.
+              </div>
+            </>
+          )
+        }
+      />
+    </>
   );
 }

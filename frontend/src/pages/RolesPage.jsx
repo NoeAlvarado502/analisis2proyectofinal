@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Save, Check, ShieldAlert } from 'lucide-react';
+import { Save, Check, ShieldAlert, RotateCcw } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
+import PageCard from '../components/PageCard';
+import ToySwitch from '../components/ToySwitch';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function RolesPage() {
   const { can } = useAuth();
@@ -11,10 +14,16 @@ export default function RolesPage() {
   const [roles, setRoles] = useState([]);
   const [selectedRole, setSelectedRole] = useState(null);
   const [rolePermissions, setRolePermissions] = useState([]);
+  const [originalPermissions, setOriginalPermissions] = useState([]);
   const [allPermissionsByModule, setAllPermissionsByModule] = useState({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Modals for confirmations
+  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
+  const [pendingRoleSwitch, setPendingRoleSwitch] = useState(null);
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
 
   const canManageRoles = can('roles.gestionar');
 
@@ -57,6 +66,7 @@ export default function RolesPage() {
         if (res?.data && res.data.permisos) {
           const codes = res.data.permisos.map((p) => (typeof p === 'string' ? p : p.codigo));
           setRolePermissions(codes);
+          setOriginalPermissions(codes);
           setHasChanges(false);
         }
       } catch (err) {
@@ -66,6 +76,14 @@ export default function RolesPage() {
 
     loadRoleDetails();
   }, [selectedRole, toast]);
+
+  // Reset permissions back to original state
+  const handleResetPermissions = () => {
+    if (!hasChanges) return;
+    setRolePermissions([...originalPermissions]);
+    setHasChanges(false);
+    toast.info('Permisos restablecidos a su estado original');
+  };
 
   // Toggle single permission checkbox
   const handleTogglePermission = (code) => {
@@ -115,13 +133,29 @@ export default function RolesPage() {
     });
   };
 
-  // Save Permissions
-  const handleSavePermissions = async () => {
-    if (!selectedRole || !canManageRoles) return;
-
-    if (!window.confirm(`¿Confirmas actualizar los permisos para el rol "${selectedRole.nombre}"?`)) {
+  // Select Role with discard confirmation
+  const handleSelectRole = (r) => {
+    if (r.id_rol === selectedRole?.id_rol) return;
+    if (hasChanges) {
+      setPendingRoleSwitch(r);
+      setConfirmDiscardOpen(true);
       return;
     }
+    setSelectedRole(r);
+  };
+
+  const handleConfirmDiscard = () => {
+    if (pendingRoleSwitch) {
+      setSelectedRole(pendingRoleSwitch);
+      setPendingRoleSwitch(null);
+      setHasChanges(false);
+    }
+    setConfirmDiscardOpen(false);
+  };
+
+  // Save Permissions
+  const handleExecuteSave = async () => {
+    if (!selectedRole || !canManageRoles) return;
 
     setSaving(true);
     try {
@@ -129,7 +163,9 @@ export default function RolesPage() {
         permisos: rolePermissions
       });
       toast.success(`Permisos del rol ${selectedRole.nombre} actualizados con éxito`);
+      setOriginalPermissions([...rolePermissions]);
       setHasChanges(false);
+      setConfirmSaveOpen(false);
 
       // Refresh role list to update badge counts
       const resRoles = await api.get('/roles');
@@ -144,230 +180,294 @@ export default function RolesPage() {
   };
 
   return (
-    <div>
-      {/* Header */}
-      <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
-            <span style={{ width: '10px', height: '10px', borderRadius: '999px', backgroundColor: 'var(--toy-purple)', display: 'inline-block' }} />
-            <h1 className="font-display" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
-              Roles y Permisos del Sistema
+    <>
+      <PageCard
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+            <h1
+              className="font-display"
+              style={{
+                fontSize: '1.45rem',
+                fontWeight: 800,
+                color: 'var(--toy-ink)',
+                margin: 0
+              }}
+            >
+              Roles y permisos
             </h1>
-          </div>
-          <p style={{ color: 'var(--toy-muted)', fontSize: '0.84rem', fontWeight: 600 }}>
-            Administración de perfiles operativos. Configura las acciones permitidas para cada tipo de cuenta en la juguetería.
-          </p>
-        </div>
-
-        {canManageRoles && (
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleSavePermissions}
-            disabled={saving || !hasChanges}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            {saving ? (
-              'Guardando...'
-            ) : hasChanges ? (
-              <>
-                <Save size={16} strokeWidth={2.4} /> Guardar Permisos
-              </>
-            ) : (
-              <>
-                <Check size={16} strokeWidth={2.4} /> Sin Cambios Pendientes
-              </>
-            )}
-          </button>
-        )}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '290px 1fr', gap: '1.5rem', alignItems: 'start' }}>
-        {/* Left: Role Selector List */}
-        <div className="card" style={{ padding: '1.1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.85rem' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
-            <h3 className="font-display" style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--toy-muted)', letterSpacing: '0.06em' }}>
-              Perfiles Definidos
-            </h3>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-            {roles.map((r) => {
-              const isSelected = selectedRole?.id_rol === r.id_rol;
-              return (
-                <div
-                  key={r.id_rol}
-                  onClick={() => {
-                    if (hasChanges) {
-                      if (!window.confirm('Tienes cambios sin guardar. ¿Deseas descartarlos y cambiar de rol?')) {
-                        return;
-                      }
-                    }
-                    setSelectedRole(r);
-                  }}
-                  style={{
-                    padding: '0.85rem 1rem',
-                    borderRadius: '16px',
-                    backgroundColor: isSelected ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.45)',
-                    border: isSelected ? '2px solid var(--toy-deep-blue)' : '2px solid var(--toy-border)',
-                    boxShadow: isSelected ? '0 3px 0 var(--toy-deep-blue)' : 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.12s ease',
-                    transform: isSelected ? 'translateY(-2px)' : 'none'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong className="font-display" style={{ color: isSelected ? '#FFFFFF' : 'var(--toy-ink)', fontSize: '0.92rem', fontWeight: 700 }}>
-                      {r.nombre}
-                    </strong>
-                    <span
-                      style={{
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '999px',
-                        backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.28)' : 'rgba(25, 168, 232, 0.12)',
-                        color: isSelected ? '#FFFFFF' : 'var(--toy-deep-blue)',
-                        border: isSelected ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(25, 168, 232, 0.25)'
-                      }}
-                    >
-                      {r.total_permisos ?? 0}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '0.78rem', color: isSelected ? 'rgba(255, 255, 255, 0.92)' : 'var(--toy-muted)', marginTop: '0.3rem', fontWeight: 600, lineHeight: 1.35 }}>
-                    {r.descripcion || 'Sin descripción'}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right: Permission Matrix by Module */}
-        <div className="card">
-          <div className="card-header" style={{ marginBottom: '1.25rem' }}>
-            <div>
-              <h2 className="card-title" style={{ fontSize: '1.15rem' }}>
-                Permisos del perfil: <span style={{ color: 'var(--toy-blue)' }}>{selectedRole?.nombre}</span>
-              </h2>
-              <p style={{ color: 'var(--toy-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
-                {canManageRoles
-                  ? 'Marca o desmarca casillas para habilitar o restringir funciones en este perfil.'
-                  : 'Modo solo lectura (sin permisos de edición).'}
-              </p>
-            </div>
-
-            <span className="badge badge-purple" style={{ fontSize: '0.72rem', padding: '0.35rem 0.8rem' }}>
-              {rolePermissions.length} permisos activos
+            <span style={{ fontSize: '1.15rem', color: 'var(--toy-border)', fontWeight: 800 }}>/</span>
+            <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--toy-muted)' }}>
+              Editar rol: <strong style={{ color: 'var(--toy-blue)', fontWeight: 800 }}>{selectedRole?.nombre}</strong>
             </span>
           </div>
+        }
+        toolbarBorder={true}
+        style={{
+          height: 'calc(100vh - 74px - 4.4rem)',
+          maxHeight: 'calc(100vh - 74px - 4.4rem)',
+          overflow: 'hidden'
+        }}
+        actions={
+          canManageRoles && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <button
+                type="button"
+                className={`btn ${hasChanges ? 'btn-danger' : 'btn-secondary'}`}
+                onClick={handleResetPermissions}
+                disabled={saving || !hasChanges}
+                title={hasChanges ? 'Restablecer cambios' : 'Sin cambios por restablecer'}
+                aria-label="Restablecer cambios"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  padding: 0,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <RotateCcw size={18} strokeWidth={2.4} color={hasChanges ? '#FFFFFF' : 'var(--toy-muted)'} />
+              </button>
 
-          {loading ? (
-            <div className="empty-state">Cargando permisos del rol...</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
-              {Object.entries(allPermissionsByModule).map(([modulo, perms]) => {
-                if (!Array.isArray(perms)) return null;
-                const moduleCodes = perms.map((p) => (typeof p === 'string' ? p : p.codigo));
-                const allChecked = moduleCodes.every((c) => rolePermissions.includes(c));
-
+              <button
+                type="button"
+                className={`btn ${hasChanges ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setConfirmSaveOpen(true)}
+                disabled={saving || !hasChanges}
+                title={hasChanges ? 'Aceptar y guardar cambios' : 'Sin cambios pendientes'}
+                aria-label="Aceptar y guardar cambios"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  padding: 0,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                {hasChanges ? (
+                  <Save size={20} strokeWidth={2.4} />
+                ) : (
+                  <Check size={20} strokeWidth={2.4} color="var(--toy-muted)" />
+                )}
+              </button>
+            </div>
+          )
+        }
+      >
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'grid',
+            gridTemplateColumns: '240px 1fr',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Left: Role Selector List */}
+          <div
+            style={{
+              height: '100%',
+              overflowY: 'auto',
+              padding: '1.25rem 1.25rem 1.25rem 1.5rem'
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+              {roles.map((r) => {
+                const isSelected = selectedRole?.id_rol === r.id_rol;
                 return (
                   <div
-                    key={modulo}
+                    key={r.id_rol}
+                    onClick={() => handleSelectRole(r)}
                     style={{
-                      border: '2px solid var(--toy-border)',
-                      borderRadius: '20px',
-                      backgroundColor: '#FFFFFF',
-                      overflow: 'hidden'
+                      padding: '0.75rem 1rem',
+                      borderRadius: '16px',
+                      backgroundColor: isSelected ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.45)',
+                      border: isSelected ? '2px solid var(--toy-deep-blue)' : '2px solid var(--toy-border)',
+                      boxShadow: isSelected ? '0 3px 0 var(--toy-deep-blue)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.12s ease',
+                      transform: isSelected ? 'translateY(-2px)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center'
                     }}
                   >
-                    {/* Module Title Header */}
-                    <div
+                    <strong
+                      className="font-display"
                       style={{
-                        padding: '0.75rem 1.15rem',
-                        backgroundColor: '#FAF5EB',
-                        borderBottom: '2px solid var(--toy-border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
+                        color: isSelected ? '#FFFFFF' : 'var(--toy-ink)',
+                        fontSize: '0.92rem',
+                        fontWeight: 700
                       }}
                     >
-                      <strong className="font-display" style={{ textTransform: 'capitalize', color: 'var(--toy-deep-blue)', fontSize: '0.88rem', fontWeight: 700 }}>
-                        Módulo: {modulo}
-                      </strong>
-
-                      {canManageRoles && (
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => handleToggleModule(perms)}
-                          style={{ fontSize: '0.72rem', fontWeight: 800, height: '28px', padding: '0.2rem 0.65rem' }}
-                        >
-                          {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Permissions list in module */}
-                    <div
-                      style={{
-                        padding: '1.1rem',
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                        gap: '0.85rem'
-                      }}
-                    >
-                      {perms.map((p) => {
-                        const isChecked = rolePermissions.includes(p.codigo);
-                        const isProtectedAdmin =
-                          selectedRole?.nombre === 'Administrador' &&
-                          (p.codigo === 'usuarios.gestionar' || p.codigo === 'roles.gestionar');
-
-                        return (
-                          <label
-                            key={p.codigo}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'flex-start',
-                              gap: '0.75rem',
-                              padding: '0.85rem 1rem',
-                              borderRadius: '16px',
-                              backgroundColor: isChecked ? 'rgba(25, 168, 232, 0.1)' : 'rgba(255, 244, 221, 0.35)',
-                              border: isChecked ? '2px solid var(--toy-blue)' : '1.5px solid var(--toy-border)',
-                              cursor: canManageRoles && !isProtectedAdmin ? 'pointer' : 'default',
-                              opacity: isProtectedAdmin ? 0.8 : 1,
-                              transition: 'all 0.12s ease'
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleTogglePermission(p.codigo)}
-                              disabled={!canManageRoles || isProtectedAdmin}
-                              style={{ marginTop: '0.2rem', accentColor: 'var(--toy-blue)', width: '16px', height: '16px' }}
-                            />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--toy-ink)', lineHeight: 1.35 }}>
-                                {p.descripcion}
-                              </div>
-                              {isProtectedAdmin && (
-                                <div style={{ fontSize: '0.72rem', color: 'var(--toy-orange-dark)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 700 }}>
-                                  <ShieldAlert size={12} strokeWidth={2.4} /> Permiso esencial del Administrador
-                                </div>
-                              )}
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
+                      {r.nombre}
+                    </strong>
                   </div>
                 );
               })}
             </div>
-          )}
+          </div>
+
+          {/* Right: Permission Matrix by Module */}
+          <div
+            style={{
+              height: '100%',
+              overflowY: 'auto',
+              padding: '1.25rem 1.75rem',
+              borderLeft: '2px solid var(--toy-border-light)'
+            }}
+          >
+
+            {loading ? (
+              <div className="empty-state">Cargando permisos del rol...</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+                {Object.entries(allPermissionsByModule).map(([modulo, perms]) => {
+                  if (!Array.isArray(perms)) return null;
+                  const moduleCodes = perms.map((p) => (typeof p === 'string' ? p : p.codigo));
+                  const allChecked = moduleCodes.every((c) => rolePermissions.includes(c));
+
+                  return (
+                    <div
+                      key={modulo}
+                      style={{
+                        border: '2px solid var(--toy-border)',
+                        borderRadius: '20px',
+                        backgroundColor: '#FFFFFF',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {/* Module Title Header */}
+                      <div
+                        style={{
+                          padding: '0.75rem 1.15rem',
+                          backgroundColor: '#FAF5EB',
+                          borderBottom: '2px solid var(--toy-border)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                      >
+                        <strong className="font-display" style={{ textTransform: 'capitalize', color: 'var(--toy-deep-blue)', fontSize: '0.88rem', fontWeight: 700 }}>
+                          Módulo: {modulo}
+                        </strong>
+
+                        {canManageRoles && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => handleToggleModule(perms)}
+                            style={{ fontSize: '0.72rem', fontWeight: 800, height: '28px', padding: '0.2rem 0.65rem' }}
+                          >
+                            {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Permissions list in module */}
+                      <div
+                        style={{
+                          padding: '1.1rem',
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                          gap: '0.85rem'
+                        }}
+                      >
+                        {perms.map((p) => {
+                          const isChecked = rolePermissions.includes(p.codigo);
+                          const isProtectedAdmin =
+                            selectedRole?.nombre === 'Administrador' &&
+                            (p.codigo === 'usuarios.gestionar' || p.codigo === 'roles.gestionar');
+
+                          return (
+                            <div
+                              key={p.codigo}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '0.75rem',
+                                padding: '0.85rem 1rem',
+                                borderRadius: '16px',
+                                backgroundColor: isChecked ? 'rgba(25, 168, 232, 0.08)' : 'rgba(255, 244, 221, 0.35)',
+                                border: isChecked ? '2px solid var(--toy-blue)' : '1.5px solid var(--toy-border)',
+                                opacity: isProtectedAdmin ? 0.8 : 1,
+                                transition: 'all 0.12s ease'
+                              }}
+                            >
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--toy-ink)', lineHeight: 1.35 }}>
+                                  {p.descripcion}
+                                </div>
+                                {isProtectedAdmin && (
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--toy-orange-dark)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 700 }}>
+                                    <ShieldAlert size={12} strokeWidth={2.4} /> Permiso esencial del Administrador
+                                  </div>
+                                )}
+                              </div>
+
+                              <ToySwitch
+                                checked={isChecked}
+                                disabled={!canManageRoles || isProtectedAdmin}
+                                onChange={() => handleTogglePermission(p.codigo)}
+                                title={isProtectedAdmin ? 'Permiso esencial del Administrador' : (isChecked ? 'Revocar permiso' : 'Conceder permiso')}
+                                ariaLabel={p.descripcion}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      </PageCard>
+
+      {/* Modal Confirmar Guardar Cambios */}
+      <ConfirmModal
+        isOpen={confirmSaveOpen}
+        onClose={() => setConfirmSaveOpen(false)}
+        onConfirm={handleExecuteSave}
+        title={`¿Guardar permisos para ${selectedRole?.nombre}?`}
+        variant="primary"
+        confirmText="Sí, guardar cambios"
+        loading={saving}
+        message={
+          <>
+            Se aplicarán los cambios a la matriz de permisos del perfil{' '}
+            <strong style={{ color: 'var(--toy-ink)' }}>{selectedRole?.nombre}</strong>.
+            <div style={{ marginTop: '0.45rem', fontSize: '0.84rem', color: 'var(--toy-muted)' }}>
+              Los usuarios con este rol asignado verán actualizados sus accesos en su próxima interacción.
+            </div>
+          </>
+        }
+      />
+
+      {/* Modal Confirmar Descartar Cambios al Cambiar de Rol */}
+      <ConfirmModal
+        isOpen={confirmDiscardOpen}
+        onClose={() => setConfirmDiscardOpen(false)}
+        onConfirm={handleConfirmDiscard}
+        title="¿Descartar cambios pendientes?"
+        variant="danger"
+        confirmText="Sí, descartar"
+        message={
+          <>
+            Tienes modificaciones sin guardar en el perfil{' '}
+            <strong style={{ color: 'var(--toy-ink)' }}>{selectedRole?.nombre}</strong>.
+            <div style={{ marginTop: '0.45rem', fontSize: '0.84rem', color: 'var(--toy-muted)' }}>
+              Si cambias de rol ahora, se perderán las casillas que hayas marcado o desmarcado.
+            </div>
+          </>
+        }
+      />
+    </>
   );
 }

@@ -11,10 +11,24 @@ export default function DataTable({
   onSearchChange,
   pagination,
   onPageChange,
-  actions
+  actions,
+  embedded = false
 }) {
   return (
-    <div>
+    <div
+      style={
+        embedded
+          ? {
+              width: '100%',
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }
+          : undefined
+      }
+    >
       {/* Top Toolbar */}
       {(onSearchChange || actions) && (
         <div className="table-toolbar">
@@ -45,13 +59,26 @@ export default function DataTable({
         </div>
       )}
 
-      {/* Table Container */}
-      <div className="table-container">
+      {/* Table Container con scroll interno */}
+      <div
+        className={embedded ? 'table-container-embedded' : 'table-container'}
+        style={embedded ? { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto' } : undefined}
+      >
         <table className="data-table">
           <thead>
             <tr>
               {columns.map((col, index) => (
-                <th key={col.key || index} style={{ width: col.width || 'auto' }}>
+                <th
+                  key={col.key || index}
+                  style={{
+                    width: col.width || 'auto',
+                    backgroundColor: '#FFFFFF',
+                    position: embedded ? 'sticky' : undefined,
+                    top: embedded ? 0 : undefined,
+                    zIndex: embedded ? 10 : undefined,
+                    borderBottom: '2px solid var(--toy-border-light)'
+                  }}
+                >
                   {col.header}
                 </th>
               ))}
@@ -96,36 +123,39 @@ export default function DataTable({
             )}
           </tbody>
         </table>
-
-        {/* Pagination Footer */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="table-pagination">
-            <span>
-              Página {pagination.page} de {pagination.totalPages} ({pagination.totalRecords} total)
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={pagination.page <= 1 || loading}
-                onClick={() => onPageChange(pagination.page - 1)}
-              >
-                <ChevronLeft size={16} strokeWidth={2.2} />
-                <span>Anterior</span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={pagination.page >= pagination.totalPages || loading}
-                onClick={() => onPageChange(pagination.page + 1)}
-              >
-                <span>Siguiente</span>
-                <ChevronRight size={16} strokeWidth={2.2} />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Pagination Footer */}
+      {pagination && pagination.totalPages > 1 && (
+        <div
+          className="table-pagination"
+          style={embedded ? { borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px', flexShrink: 0 } : undefined}
+        >
+          <span>
+            Página {pagination.page} de {pagination.totalPages} ({pagination.totalRecords} total)
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={pagination.page <= 1 || loading}
+              onClick={() => onPageChange(pagination.page - 1)}
+            >
+              <ChevronLeft size={16} strokeWidth={2.2} />
+              <span>Anterior</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={pagination.page >= pagination.totalPages || loading}
+              onClick={() => onPageChange(pagination.page + 1)}
+            >
+              <span>Siguiente</span>
+              <ChevronRight size={16} strokeWidth={2.2} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes spin {

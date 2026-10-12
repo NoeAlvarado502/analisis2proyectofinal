@@ -13,8 +13,10 @@ export class AuthService {
       `SELECT u.id_usuario, u.id_rol, u.nombre_completo, u.email, u.password_hash, u.activo, r.nombre AS rol
        FROM usuarios u
        JOIN roles r ON r.id_rol = u.id_rol
-       WHERE u.email = ?`,
-      [email]
+       WHERE u.email = ? 
+          OR u.email = CONCAT(?, '@jugueteria.local')
+          OR REPLACE(u.email, '@jugueteria.local', '') = ?`,
+      [email, email, email]
     );
 
     const user = rows[0];

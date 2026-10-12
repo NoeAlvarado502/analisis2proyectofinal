@@ -42,10 +42,34 @@ export default function Modal({
           </div>
           <button
             type="button"
-            className="btn btn-secondary btn-sm"
+            className="btn btn-sm"
             onClick={onClose}
             aria-label="Cerrar modal"
-            style={{ width: '36px', height: '36px', padding: 0, borderRadius: '14px' }}
+            style={{
+              width: '36px',
+              height: '36px',
+              padding: 0,
+              borderRadius: '12px',
+              backgroundColor: '#FFFFFF',
+              color: 'var(--toy-red)',
+              border: '2px solid rgba(241, 91, 74, 0.35)',
+              boxShadow: '0 2px 0 rgba(241, 91, 74, 0.25)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--toy-red)';
+              e.currentTarget.style.color = '#FFFFFF';
+              e.currentTarget.style.borderColor = 'var(--toy-red-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.color = 'var(--toy-red)';
+              e.currentTarget.style.borderColor = 'rgba(241, 91, 74, 0.35)';
+            }}
           >
             <X size={18} strokeWidth={2.4} />
           </button>

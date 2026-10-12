@@ -11,7 +11,7 @@ export default function FormField({
   return (
     <div className="form-group">
       {label && (
-        <label htmlFor={name} className="form-label">
+        <label htmlFor={name} className="form-label" style={{ textTransform: 'none' }}>
           <span>
             {label} {required && <span style={{ color: 'var(--toy-red)' }}>*</span>}
           </span>

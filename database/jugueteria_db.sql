@@ -1259,18 +1259,18 @@ JOIN permisos p ON p.codigo IN ('clientes.gestionar','clientes.consultar','produ
     'inventario.consultar','pedidos.crear','ventas.registrar','pagos.registrar')
 WHERE r.nombre = 'Operador';
 
--- Usuarios de demostración (REEMPLAZAR password_hash por un hash real generado desde la app)
+-- Usuarios de demostración (admin / admin, supervisor / supervisor, operador / operador)
 SET @usuario_actual = 1;   -- el primer usuario se auto-referencia en la auditoría (BD nueva)
 
 INSERT INTO usuarios (id_rol, nombre_completo, email, password_hash)
 VALUES ((SELECT id_rol FROM roles WHERE nombre = 'Administrador'),
-        'Administrador del Sistema', 'admin@jugueteria.local', 'REEMPLAZAR_HASH');
+        'Administrador del Sistema', 'admin', '$2a$10$dqfPmwHYKpjrRfzWe02x0OxzoPXwomqIu2vyKflzWiYlJ4eEJuvgm');
 INSERT INTO usuarios (id_rol, nombre_completo, email, password_hash)
 VALUES ((SELECT id_rol FROM roles WHERE nombre = 'Supervisor'),
-        'Supervisor Demo', 'supervisor@jugueteria.local', 'REEMPLAZAR_HASH');
+        'Supervisor Demo', 'supervisor', '$2a$10$YgWm258nmBWjGgXKZSyE3ek3UOoC//9/gkxZ0ythJ7iKYeiqzyojC');
 INSERT INTO usuarios (id_rol, nombre_completo, email, password_hash)
 VALUES ((SELECT id_rol FROM roles WHERE nombre = 'Operador'),
-        'Operador Demo', 'operador@jugueteria.local', 'REEMPLAZAR_HASH');
+        'Operador Demo', 'operador', '$2a$10$JdRkOgF7X0vDmYNoo2n64uScV6dP8gh83Q1YS3yBoGvL8nUWRMs3W');
 
 INSERT INTO configuraciones (clave, valor, descripcion) VALUES
 ('DESCUENTO_MAX_SIN_AUTORIZACION', '10.00',
