@@ -18,7 +18,7 @@
   - [3. Configuración del Frontend](#3-configuración-del-frontend)
 - [Credenciales de Demostración](#-credenciales-de-demostración)
 - [Pruebas Automatizadas](#-pruebas-automatizadas)
-- [Entregables y Documentación Técnica](#-entregables-y-documentación-técnica)
+- [Documentación Técnica y Arquitectura](#-documentación-técnica-y-arquitectura)
 - [Estrategia de Ramas (GitFlow)](#-estrategia-de-ramas-gitflow)
 - [Licencia](#-licencia)
 
@@ -261,12 +261,12 @@ Para consultar la matriz completa de casos de prueba y criterios de aceptación,
 
 ---
 
-## 📑 Entregables y Documentación Técnica
+## 📑 Documentación Técnica y Arquitectura
 
-- 📘 **Informe Formal de Entrega (Sprint 1):** [`Entrega_1_Sprint_1_Jugueteria_Quetzal.docx`](Entrega_1_Sprint_1_Jugueteria_Quetzal.docx)
-- 🎨 **Guía de Estilo y Living Design System:** [`Design_System_3D_Toy_Commerce.docx`](Design_System_3D_Toy_Commerce.docx)
 - 📝 **Bitácora de Decisiones Arquitectónicas:** [`docs/sprint-1/bitacora-decisiones.md`](docs/sprint-1/bitacora-decisiones.md)
-- 🗄️ **Diccionario de Datos y Modelo Relacional:** [`schema_jugueteria.sql`](schema_jugueteria.sql) y [`database/jugueteria_db.sql`](database/jugueteria_db.sql)
+- 🧪 **Matriz de Pruebas y Evidencias:** [`docs/sprint-1/matriz-pruebas.md`](docs/sprint-1/matriz-pruebas.md)
+- 🗄️ **Scripts de Base de Datos y DDL:** [`database/jugueteria_db.sql`](database/jugueteria_db.sql)
+- 🖼️ **Evidencias de Ejecución y Diagramas:** [`docs/sprint-1/evidencias/`](docs/sprint-1/evidencias/)
 
 ---
 

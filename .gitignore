@@ -44,3 +44,8 @@ __pycache__/
 .venv/
 venv/
 env/
+
+# Documentos y reportes binarios (Word, PDF)
+*.docx
+*.doc
+*.pdf
