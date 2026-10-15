@@ -184,7 +184,9 @@ export default function ClientesPage() {
     setTogglingStatus(true);
 
     try {
-      await api.patch(`/clientes/${clienteToToggle.id_cliente}/estado`);
+      await api.patch(`/clientes/${clienteToToggle.id_cliente}/estado`, {
+        activo: !clienteToToggle.activo
+      });
       toast.success(`Cliente ${actionName} correctamente`);
       setConfirmToggleOpen(false);
       setClienteToToggle(null);

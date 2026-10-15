@@ -6,6 +6,9 @@ export const productosRouter = Router();
 
 productosRouter.use(requireAuth);
 
+// Sugerencia de SKU automático según marca y categoría
+productosRouter.get('/sugerir-sku', requirePermission('productos.gestionar'), ProductosController.sugerirSku);
+
 // Consultas de productos
 productosRouter.get('/', requirePermission('productos.consultar', 'productos.gestionar'), ProductosController.listar);
 productosRouter.get('/:id', requirePermission('productos.consultar', 'productos.gestionar'), ProductosController.obtenerPorId);

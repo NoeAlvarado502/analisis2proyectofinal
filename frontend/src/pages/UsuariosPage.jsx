@@ -224,7 +224,9 @@ export default function UsuariosPage() {
     setTogglingStatus(true);
 
     try {
-      await api.patch(`/usuarios/${userToToggle.id_usuario}/estado`);
+      await api.patch(`/usuarios/${userToToggle.id_usuario}/estado`, {
+        activo: !userToToggle.activo
+      });
       toast.success(`Usuario ${actionName} correctamente`);
       setConfirmToggleOpen(false);
       setUserToToggle(null);
@@ -256,7 +258,7 @@ export default function UsuariosPage() {
     setResetError('');
     try {
       await api.patch(`/usuarios/${selectedUser.id_usuario}/password`, {
-        password: resetPasswordValue
+        new_password: resetPasswordValue
       });
       toast.success(`Contraseña de ${selectedUser.nombre_completo} restablecida correctamente`);
       setResetModalOpen(false);

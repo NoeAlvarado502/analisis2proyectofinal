@@ -56,10 +56,29 @@ export class ProductosController {
   static async cambiarEstado(req, res, next) {
     try {
       const id = parseInt(req.params.id, 10);
-      const { activo } = updateEstadoProductoSchema.parse(req.body);
+      let activo;
+      if (req.body && req.body.activo !== undefined) {
+        ({ activo } = updateEstadoProductoSchema.parse(req.body));
+      } else {
+        const actual = await ProductosService.obtenerPorId(id);
+        activo = !actual.activo;
+      }
       const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
       const producto = await ProductosService.cambiarEstado(id, activo, req.user.id_usuario, ip);
       res.json(successResponse(producto));
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async sugerirSku(req, res, next) {
+    try {
+      const { id_categoria, id_marca } = req.query;
+      const sku = await ProductosService.sugerirSku(
+        id_categoria ? parseInt(id_categoria, 10) : null,
+        id_marca ? parseInt(id_marca, 10) : null
+      );
+      res.json(successResponse({ sku }));
     } catch (err) {
       next(err);
     }
