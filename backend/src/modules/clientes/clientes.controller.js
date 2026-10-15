@@ -54,7 +54,13 @@ export class ClientesController {
   static async cambiarEstado(req, res, next) {
     try {
       const id = parseInt(req.params.id, 10);
-      const { activo } = updateEstadoClienteSchema.parse(req.body);
+      let activo;
+      if (req.body && req.body.activo !== undefined) {
+        ({ activo } = updateEstadoClienteSchema.parse(req.body));
+      } else {
+        const actual = await ClientesService.obtenerPorId(id);
+        activo = !actual.activo;
+      }
       const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
       const cliente = await ClientesService.cambiarEstado(id, activo, req.user.id_usuario, ip);
       res.json(successResponse(cliente));

@@ -113,6 +113,11 @@ export class ProductosService {
     currentUserId,
     ip = null
   ) {
+    let finalSku = codigo_sku ? String(codigo_sku).trim().toUpperCase() : '';
+    if (!finalSku) {
+      finalSku = await this.sugerirSku(id_categoria, id_marca);
+    }
+
     const insertId = await withUser(currentUserId, async (conn) => {
       // 1. Insertar producto (trg_productos_ai crea inventario = 0 y audita)
       const [res] = await conn.execute(
@@ -120,7 +125,7 @@ export class ProductosService {
          (codigo_sku, nombre, descripcion, id_categoria, id_marca, edad_minima_meses, advertencia_seguridad, stock_minimo)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          codigo_sku,
+          finalSku,
           nombre,
           descripcion,
           id_categoria,
@@ -259,5 +264,85 @@ export class ProductosService {
       [res.insertId]
     );
     return created[0];
+  }
+
+  /**
+   * Genera código de 3 letras normalizado para la categoría
+   */
+  static generarCodigoCategoria(nombre) {
+    if (!nombre) return 'JUG';
+    const clean = nombre
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+    return (clean.slice(0, 3) || 'JUG').padEnd(3, 'X');
+  }
+
+  /**
+   * Genera código de 2 a 4 caracteres para la marca (o GEN para genérica)
+   */
+  static generarCodigoMarca(nombre) {
+    if (!nombre || nombre.toLowerCase().includes('gen')) return 'GEN';
+    const cleanText = nombre
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+    const words = cleanText.split(/\s+/).filter(Boolean);
+    if (words.length > 1) {
+      const initials = words.map(w => w[0].toUpperCase()).join('').replace(/[^A-Z0-9]/g, '');
+      if (initials.length >= 2 && initials.length <= 4) return initials;
+    }
+    const clean = cleanText.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    return (clean.slice(0, 3) || 'MAR').padEnd(3, 'X');
+  }
+
+  /**
+   * Sugiere el siguiente código SKU correlativo según categoría y marca
+   */
+  static async sugerirSku(id_categoria, id_marca = null) {
+    let catNombre = 'Juguetes';
+    if (id_categoria) {
+      const [cats] = await pool.execute(
+        'SELECT nombre FROM categorias WHERE id_categoria = ?',
+        [id_categoria]
+      );
+      if (cats.length > 0) catNombre = cats[0].nombre;
+    }
+
+    let marcaNombre = 'Genérica';
+    if (id_marca) {
+      const [marcas] = await pool.execute(
+        'SELECT nombre FROM marcas WHERE id_marca = ?',
+        [id_marca]
+      );
+      if (marcas.length > 0) marcaNombre = marcas[0].nombre;
+    }
+
+    const catCode = this.generarCodigoCategoria(catNombre);
+    const marcaCode = this.generarCodigoMarca(marcaNombre);
+    const prefix = `${catCode}-${marcaCode}`;
+
+    // Obtener todos los productos para encontrar el mayor correlativo global entre todos los registros existentes
+    const [rows] = await pool.execute(`SELECT id_producto, codigo_sku FROM productos`);
+
+    let maxNum = 0;
+    for (const r of rows) {
+      if (r.id_producto && r.id_producto > maxNum) {
+        maxNum = r.id_producto;
+      }
+      if (r.codigo_sku) {
+        const match = String(r.codigo_sku).match(/(\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+    }
+
+    const nextCorrelativo = String(maxNum + 1).padStart(3, '0');
+    return `${prefix}-${nextCorrelativo}`;
   }
 }

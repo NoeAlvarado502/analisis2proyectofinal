@@ -4,22 +4,23 @@ import { env } from '../src/config/env.js';
 
 async function seedPasswords() {
   console.log('🔐 Generando hashes de contraseña para usuarios demo...');
-  const password = env.DEMO_PASSWORD;
-  const hash = await bcrypt.hash(password, 10);
 
-  const [result] = await pool.execute(
-    `UPDATE usuarios
-     SET password_hash = ?
-     WHERE email IN ('admin@jugueteria.local', 'supervisor@jugueteria.local', 'operador@jugueteria.local')`,
-    [hash]
-  );
+  const users = [
+    { username: 'admin', password: 'admin' },
+    { username: 'supervisor', password: 'supervisor' },
+    { username: 'operador', password: 'operador' }
+  ];
 
-  console.log(`✅ Contraseñas actualizadas para ${result.affectedRows} usuarios.`);
-  console.log(`🔑 Contraseña demo configurada: ${password}`);
-  console.log(`📧 Usuarios:
-  - admin@jugueteria.local (Administrador)
-  - supervisor@jugueteria.local (Supervisor)
-  - operador@jugueteria.local (Operador)`);
+  for (const u of users) {
+    const hash = await bcrypt.hash(u.password, 10);
+    const [result] = await pool.execute(
+      `UPDATE usuarios
+       SET password_hash = ?, email = ?
+       WHERE email = ? OR email = ? OR email LIKE ?`,
+      [hash, u.username, u.username, `${u.username}@jugueteria.local`, `%${u.username}%`]
+    );
+    console.log(`✅ Usuario '${u.username}' configurado con contraseña '${u.password}' (${result.affectedRows} filas).`);
+  }
 
   await pool.end();
 }

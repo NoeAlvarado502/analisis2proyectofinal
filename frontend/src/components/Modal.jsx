@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
 
 export default function Modal({
   isOpen,
@@ -35,15 +36,42 @@ export default function Modal({
         aria-modal="true"
       >
         <div className="modal-header">
-          <h3 className="card-title">{title}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
+            <h3 className="card-title" style={{ fontSize: '1.25rem', margin: 0 }}>{title}</h3>
+          </div>
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="btn btn-sm"
             onClick={onClose}
             aria-label="Cerrar modal"
-            style={{ fontSize: '1.25rem', lineHeight: '1', padding: '0.2rem 0.5rem' }}
+            style={{
+              width: '36px',
+              height: '36px',
+              padding: 0,
+              borderRadius: '12px',
+              backgroundColor: '#FFFFFF',
+              color: 'var(--toy-red)',
+              border: '2px solid rgba(241, 91, 74, 0.35)',
+              boxShadow: '0 2px 0 rgba(241, 91, 74, 0.25)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--toy-red)';
+              e.currentTarget.style.color = '#FFFFFF';
+              e.currentTarget.style.borderColor = 'var(--toy-red-dark)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.color = 'var(--toy-red)';
+              e.currentTarget.style.borderColor = 'rgba(241, 91, 74, 0.35)';
+            }}
           >
-            ✕
+            <X size={18} strokeWidth={2.4} />
           </button>
         </div>
         <div className="modal-body">{children}</div>

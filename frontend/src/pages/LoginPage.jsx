@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ToyBrick, AlertCircle, User, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import FormField from '../components/FormField';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -32,156 +34,166 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickFill = (demoEmail) => {
-    setEmail(demoEmail);
-    setPassword('Admin1234!');
-    setErrorMsg('');
-  };
-
   return (
     <div
       style={{
         minHeight: '100vh',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: `radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.15), transparent 50%),
-                     radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.08), transparent 40%),
-                     var(--bg-app)`,
-        padding: '1.5rem'
+        padding: '1.5rem',
+        backgroundColor: 'transparent'
       }}
     >
+      {/* Brand Header fuera de la tarjeta */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.85rem',
+          marginBottom: '1.75rem'
+        }}
+      >
+        <ToyBrick size={34} strokeWidth={2.4} style={{ color: 'var(--toy-ink)' }} />
+        <h1
+          className="font-display"
+          style={{
+            fontSize: '1.75rem',
+            fontWeight: 800,
+            color: 'var(--toy-ink)',
+            letterSpacing: '0.01em',
+            lineHeight: 1,
+            margin: 0,
+            textTransform: 'uppercase'
+          }}
+        >
+          JUGUETERÍA QUETZAL
+        </h1>
+      </div>
+
       <div
         className="card"
         style={{
           width: '100%',
-          maxWidth: '440px',
-          boxShadow: 'var(--shadow-lg), 0 0 35px rgba(99, 102, 241, 0.12)',
-          border: '1px solid rgba(255, 255, 255, 0.12)'
+          maxWidth: '430px',
+          padding: '2.2rem 2rem',
+          borderRadius: '24px',
+          backgroundColor: '#FFFFFF',
+          border: '2px solid var(--toy-border)',
+          boxShadow: '0 12px 32px rgba(58, 42, 34, 0.1), 0 2px 6px rgba(58, 42, 34, 0.04)'
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <div
-            style={{
-              width: '54px',
-              height: '54px',
-              margin: '0 auto 1rem',
-              borderRadius: 'var(--radius-lg)',
-              background: 'linear-gradient(135deg, var(--primary), var(--accent-purple))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.75rem',
-              boxShadow: '0 4px 18px var(--primary-glow)'
-            }}
-          >
-            🧸
-          </div>
-          <h1 style={{ fontSize: '1.6rem', marginBottom: '0.35rem' }}>Juguetería DB</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Sistema de Gestión · Análisis II (Sprint 1)
-          </p>
-        </div>
-
         {errorMsg && (
           <div
             style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--danger-bg)',
-              border: '1px solid var(--danger-border)',
-              color: 'var(--danger-text)',
-              fontSize: '0.85rem',
+              padding: '0.85rem 1rem',
+              borderRadius: '14px',
+              backgroundColor: '#FEF2F2',
+              border: '2px solid var(--toy-red)',
+              color: '#991B1B',
+              fontSize: '0.86rem',
               marginBottom: '1.25rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.65rem',
+              fontWeight: 700
             }}
           >
-            <span>⚠️</span>
+            <AlertCircle size={18} strokeWidth={2.4} />
             <span>{errorMsg}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <FormField label="Correo electrónico" name="email" required>
-            <input
-              id="email"
-              type="email"
-              className="form-control"
-              placeholder="usuario@jugueteria.local"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
+          <FormField label="Usuario" name="email">
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <User
+                size={19}
+                strokeWidth={2.4}
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  color: 'var(--toy-muted)',
+                  pointerEvents: 'none'
+                }}
+              />
+              <input
+                id="email"
+                type="text"
+                className="form-control"
+                placeholder="Usuario"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
+                required
+                style={{ paddingLeft: '2.5rem' }}
+              />
+            </div>
           </FormField>
 
-          <FormField label="Contraseña" name="password" required>
-            <input
-              id="password"
-              type="password"
-              className="form-control"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
+          <FormField label="Contraseña" name="password">
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Lock
+                size={19}
+                strokeWidth={2.4}
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  color: 'var(--toy-muted)',
+                  pointerEvents: 'none'
+                }}
+              />
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                className="form-control"
+                placeholder="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+                style={{ paddingLeft: '2.5rem', paddingRight: '2.75rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--toy-muted)',
+                  borderRadius: '8px',
+                  transition: 'color 0.15s ease'
+                }}
+                title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+              >
+                {showPassword ? (
+                  <EyeOff size={19} strokeWidth={2.4} />
+                ) : (
+                  <Eye size={19} strokeWidth={2.4} />
+                )}
+              </button>
+            </div>
           </FormField>
 
           <button
             type="submit"
             className="btn btn-primary"
-            style={{ width: '100%', marginTop: '0.75rem', padding: '0.75rem' }}
+            style={{ width: '100%', marginTop: '0.6rem', height: '46px', fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.02em' }}
             disabled={loading}
           >
-            {loading ? 'Validando credenciales...' : 'Iniciar Sesión'}
+            <span>{loading ? 'Verificando...' : 'Ingresar'}</span>
           </button>
         </form>
-
-        {/* Demo Fast Logins */}
-        <div style={{ marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-subtle)' }}>
-          <p
-            style={{
-              fontSize: '0.75rem',
-              textTransform: 'uppercase',
-              color: 'var(--text-dim)',
-              letterSpacing: '0.05em',
-              fontWeight: 700,
-              marginBottom: '0.75rem',
-              textAlign: 'center'
-            }}
-          >
-            Acceso Rápido para Demostración / Docente
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickFill('admin@jugueteria.local')}
-              title="admin@jugueteria.local"
-            >
-              👑 Admin
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickFill('supervisor@jugueteria.local')}
-              title="supervisor@jugueteria.local"
-            >
-              🔍 Superv.
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickFill('operador@jugueteria.local')}
-              title="operador@jugueteria.local"
-            >
-              💼 Operador
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

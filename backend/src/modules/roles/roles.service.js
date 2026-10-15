@@ -98,7 +98,7 @@ export class RolesService {
       }
     }
 
-    return await withUser(currentUserId, async (conn) => {
+    await withUser(currentUserId, async (conn) => {
       // 1. Limpiar permisos actuales del rol
       await conn.execute('DELETE FROM rol_permisos WHERE id_rol = ?', [idRol]);
 

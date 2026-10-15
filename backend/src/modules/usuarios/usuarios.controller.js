@@ -55,7 +55,13 @@ export class UsuariosController {
   static async cambiarEstado(req, res, next) {
     try {
       const id = parseInt(req.params.id, 10);
-      const { activo } = updateEstadoSchema.parse(req.body);
+      let activo;
+      if (req.body && req.body.activo !== undefined) {
+        ({ activo } = updateEstadoSchema.parse(req.body));
+      } else {
+        const actual = await UsuariosService.obtenerPorId(id);
+        activo = !actual.activo;
+      }
       const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
       const usuario = await UsuariosService.cambiarEstado(id, activo, req.user.id_usuario, ip);
       res.json(successResponse(usuario));
@@ -67,9 +73,10 @@ export class UsuariosController {
   static async resetPassword(req, res, next) {
     try {
       const id = parseInt(req.params.id, 10);
-      const { new_password } = resetPasswordSchema.parse(req.body);
+      const new_password = req.body?.new_password || req.body?.password;
+      const parsed = resetPasswordSchema.parse({ new_password });
       const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
-      const result = await UsuariosService.resetPassword(id, new_password, req.user.id_usuario, ip);
+      const result = await UsuariosService.resetPassword(id, parsed.new_password, req.user.id_usuario, ip);
       res.json(successResponse(result));
     } catch (err) {
       next(err);

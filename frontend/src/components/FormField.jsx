@@ -11,15 +11,15 @@ export default function FormField({
   return (
     <div className="form-group">
       {label && (
-        <label htmlFor={name} className="form-label">
+        <label htmlFor={name} className="form-label" style={{ textTransform: 'none' }}>
           <span>
-            {label} {required && <span style={{ color: 'var(--danger-text)' }}>*</span>}
+            {label} {required && <span style={{ color: 'var(--toy-red)' }}>*</span>}
           </span>
         </label>
       )}
       {children}
       {helpText && !error && (
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
+        <span style={{ fontSize: '0.75rem', color: 'var(--toy-muted)', marginTop: '0.2rem', fontWeight: 600 }}>
           {helpText}
         </span>
       )}

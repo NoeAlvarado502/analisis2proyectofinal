@@ -39,9 +39,9 @@ export const createProductoSchema = z.object({
   codigo_sku: z
     .string()
     .trim()
-    .min(2, 'El SKU debe tener al menos 2 caracteres')
     .max(50)
-    .transform(val => val.toUpperCase()),
+    .nullish()
+    .transform(val => (val && val.length > 0 ? val.toUpperCase() : undefined)),
   nombre: z.string().trim().min(2, 'El nombre es obligatorio').max(150),
   descripcion: z.string().nullish().transform(val => val?.trim() || null),
   id_categoria: z.coerce.number().int().positive('La categoría es obligatoria'),

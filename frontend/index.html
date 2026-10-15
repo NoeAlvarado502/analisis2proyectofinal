@@ -3,13 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Sistema de Gestión de Pedidos, Inventario y Ventas - Juguetería" />
-    <title>Juguetería | Sistema de Gestión</title>
+    <meta name="description" content="Sistema de Gestión de Pedidos, Inventario y Ventas - Juguetería Quetzal" />
+    <title>Juguetería Quetzal | Sistema de Gestión</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              toy: {
+                blue: '#19A8E8',
+                'deep-blue': '#087BB5',
+                cream: '#FFF4DD',
+                white: '#FFFFFF',
+                orange: '#FF9D2E',
+                yellow: '#FFD45A',
+                green: '#74C95B',
+                red: '#F15B4A',
+                purple: '#8366D9',
+                ink: '#3A2A22',
+                muted: '#75665A',
+                'cream-dark': '#F5E6C8',
+                'gold-glow': '#FFE57F'
+              }
+            },
+            fontFamily: {
+              display: ['Fredoka', 'sans-serif'],
+              body: ['Nunito', 'sans-serif']
+            },
+            boxShadow: {
+              'toy-card': '0 8px 24px rgba(58, 42, 34, 0.12), 0 2px 6px rgba(58, 42, 34, 0.06)',
+              'toy-press': '0 4px 0 #087BB5',
+              'toy-orange-press': '0 4px 0 #D97814',
+              'toy-blister': 'inset 0 2px 4px rgba(255,255,255,0.8), inset 0 -3px 5px rgba(0,0,0,0.18), 0 12px 28px rgba(58,42,34,0.18)',
+              'gold-plate': '0 2px 0 #C48E00, inset 0 1px 0 rgba(255,255,255,0.7)'
+            }
+          }
+        }
+      }
+    </script>
   </head>
-  <body>
+  <body class="selection:bg-toy-blue selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

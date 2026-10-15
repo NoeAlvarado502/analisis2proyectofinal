@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
@@ -30,10 +31,10 @@ export function ToastProvider({ children }) {
       <div className="toast-container" role="region" aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast-${t.type}`}>
-            <span style={{ fontSize: '1.1rem' }}>
-              {t.type === 'success' && '✓'}
-              {t.type === 'error' && '✕'}
-              {t.type === 'info' && 'ℹ'}
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              {t.type === 'success' && <CheckCircle2 size={19} color="var(--color-green)" strokeWidth={2.2} />}
+              {t.type === 'error' && <AlertCircle size={19} color="var(--color-red)" strokeWidth={2.2} />}
+              {t.type === 'info' && <Info size={19} color="var(--color-primary)" strokeWidth={2.2} />}
             </span>
             <span style={{ flex: 1, fontSize: '0.88rem' }}>{t.message}</span>
             <button
@@ -43,13 +44,14 @@ export function ToastProvider({ children }) {
                 border: 'none',
                 color: 'currentColor',
                 cursor: 'pointer',
-                opacity: 0.7,
-                fontSize: '1rem',
-                padding: '0 4px'
+                opacity: 0.65,
+                padding: '0 4px',
+                display: 'inline-flex',
+                alignItems: 'center'
               }}
               aria-label="Cerrar notificación"
             >
-              ✕
+              <X size={15} strokeWidth={2.2} />
             </button>
           </div>
         ))}

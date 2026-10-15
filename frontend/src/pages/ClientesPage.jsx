@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { UserPlus, Pencil } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
 import FormField from '../components/FormField';
 import PermissionGate from '../components/PermissionGate';
+import SearchInput from '../components/SearchInput';
+import FilterDropdown from '../components/FilterDropdown';
+import ToySwitch from '../components/ToySwitch';
+import PageCard from '../components/PageCard';
+import { parseApiErrors, isValidEmail } from '../utils/formValidators';
 
 export default function ClientesPage() {
   const { can } = useAuth();
@@ -23,6 +30,12 @@ export default function ClientesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
 
+  const estadoOptions = [
+    { value: '', label: 'Todos los estados', shortLabel: 'Todos', color: 'var(--toy-muted)' },
+    { value: '1', label: 'Solo Activos', shortLabel: 'Activos', color: 'var(--toy-blue)' },
+    { value: '0', label: 'Solo Inactivos', shortLabel: 'Inactivos', color: 'var(--toy-red)' }
+  ];
+
   // Modal Create / Edit
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
@@ -36,6 +49,11 @@ export default function ClientesPage() {
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Confirm Modal for Toggle Status
+  const [confirmToggleOpen, setConfirmToggleOpen] = useState(false);
+  const [clienteToToggle, setClienteToToggle] = useState(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   // Fetch Clientes
   const fetchClientes = useCallback(async () => {
@@ -94,9 +112,31 @@ export default function ClientesPage() {
     setModalOpen(true);
   };
 
+  // Form Validation
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.nombre_razon_social.trim()) {
+      errors.nombre_razon_social = 'El nombre o razón social es obligatorio';
+    }
+
+    const emailTrimmed = formData.email.trim();
+    if (emailTrimmed && !isValidEmail(emailTrimmed)) {
+      errors.email = 'Ingresa un formato de correo válido (ejemplo: cliente@correo.com)';
+    }
+
+    return errors;
+  };
+
   // Submit Form
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error('Corrige los errores señalados en el formulario');
+      return;
+    }
+
     setFormErrors({});
     setSubmitting(true);
 
@@ -120,12 +160,9 @@ export default function ClientesPage() {
       setModalOpen(false);
       fetchClientes();
     } catch (err) {
-      if (err.details && typeof err.details === 'object') {
-        const fieldErrors = {};
-        Object.entries(err.details).forEach(([key, val]) => {
-          fieldErrors[key] = Array.isArray(val) ? val.join(', ') : val;
-        });
-        setFormErrors(fieldErrors);
+      if (err.details) {
+        setFormErrors(parseApiErrors(err));
+        toast.error('Corrige los errores señalados en el formulario');
       } else {
         toast.error(err.message || 'Error al procesar la solicitud');
       }
@@ -134,19 +171,30 @@ export default function ClientesPage() {
     }
   };
 
-  // Toggle Estado
-  const handleToggleEstado = async (cliente) => {
-    const actionName = cliente.activo ? 'desactivar' : 'activar';
-    if (!window.confirm(`¿Seguro que deseas ${actionName} a ${cliente.nombre_razon_social}?`)) {
-      return;
-    }
+  // Open Confirm Dialog for Active State
+  const handleToggleEstado = (cliente) => {
+    setClienteToToggle(cliente);
+    setConfirmToggleOpen(true);
+  };
+
+  // Execute Toggle Active State
+  const handleConfirmToggleEstado = async () => {
+    if (!clienteToToggle) return;
+    const actionName = clienteToToggle.activo ? 'desactivado' : 'activado';
+    setTogglingStatus(true);
 
     try {
-      await api.patch(`/clientes/${cliente.id_cliente}/estado`);
-      toast.success(`Cliente ${cliente.activo ? 'desactivado' : 'activado'} correctamente`);
+      await api.patch(`/clientes/${clienteToToggle.id_cliente}/estado`, {
+        activo: !clienteToToggle.activo
+      });
+      toast.success(`Cliente ${actionName} correctamente`);
+      setConfirmToggleOpen(false);
+      setClienteToToggle(null);
       fetchClientes();
     } catch (err) {
-      toast.error(err.message || `No se pudo ${actionName} el cliente`);
+      toast.error(err.message || `No se pudo cambiar el estado del cliente`);
+    } finally {
+      setTogglingStatus(false);
     }
   };
 
@@ -156,12 +204,9 @@ export default function ClientesPage() {
       header: 'Cliente / Razón Social',
       key: 'nombre_razon_social',
       render: (row) => (
-        <div>
-          <div style={{ fontWeight: 600 }}>{row.nombre_razon_social}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-            ID: {row.id_cliente}
-          </div>
-        </div>
+        <span style={{ fontWeight: 700, color: 'var(--toy-ink)' }}>
+          {row.nombre_razon_social}
+        </span>
       )
     },
     {
@@ -171,13 +216,19 @@ export default function ClientesPage() {
         row.identificacion ? (
           <code>{row.identificacion}</code>
         ) : (
-          <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>Consumidor Final</span>
+          <span style={{ color: 'var(--toy-muted)', fontStyle: 'italic', fontSize: '0.82rem', fontWeight: 600 }}>
+            Consumidor Final
+          </span>
         )
     },
     {
       header: 'Teléfono',
       key: 'telefono',
-      render: (row) => row.telefono || '-'
+      render: (row) => (
+        <span style={{ fontWeight: 600, color: 'var(--toy-ink)' }}>
+          {row.telefono || '-'}
+        </span>
+      )
     },
     {
       header: 'Correo',
@@ -187,7 +238,11 @@ export default function ClientesPage() {
     {
       header: 'Dirección',
       key: 'direccion',
-      render: (row) => row.direccion || '-'
+      render: (row) => (
+        <span style={{ fontSize: '0.82rem', color: 'var(--toy-muted)', fontWeight: 600 }}>
+          {row.direccion || '-'}
+        </span>
+      )
     },
     {
       header: 'Estado',
@@ -205,103 +260,104 @@ export default function ClientesPage() {
       header: 'Acciones',
       key: 'acciones',
       render: (row) => (
-        <div className="flex gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
           <button
             type="button"
-            className="btn btn-secondary btn-sm"
+            className="btn btn-secondary btn-icon"
             onClick={() => handleOpenEdit(row)}
             title="Editar cliente"
+            aria-label="Editar cliente"
           >
-            ✏️ Editar
+            <Pencil size={15} strokeWidth={2.2} />
           </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${row.activo ? 'btn-danger' : 'btn-secondary'}`}
-            onClick={() => handleToggleEstado(row)}
+          <ToySwitch
+            checked={row.activo}
+            onChange={() => handleToggleEstado(row)}
             title={row.activo ? 'Desactivar cliente' : 'Activar cliente'}
-          >
-            {row.activo ? '🚫 Desactivar' : '✓ Activar'}
-          </button>
+            ariaLabel={row.activo ? 'Desactivar cliente' : 'Activar cliente'}
+          />
         </div>
       )
     });
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="card-header" style={{ marginBottom: '1.5rem', paddingBottom: '1rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.6rem' }}>Directorio de Clientes</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Registro fiscal de clientes mayoristas y minoristas, compatible con ventas al Consumidor Final.
-          </p>
-        </div>
-
-        <PermissionGate permission="clientes.gestionar">
-          <button type="button" className="btn btn-primary" onClick={handleOpenCreate}>
-            + Nuevo Cliente
-          </button>
-        </PermissionGate>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '240px' }}>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Buscar por nombre, NIT, teléfono o correo..."
+    <>
+      {/* Tarjeta Unificada Reutilizable (PageCard) */}
+      <PageCard
+        title="Clientes"
+        actions={
+          <>
+            <SearchInput
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
                 setPage(1);
               }}
+              placeholder=""
+              ariaLabel="Buscar clientes"
             />
-          </div>
 
-          <div style={{ width: '180px' }}>
-            <select
-              className="form-control"
+            <FilterDropdown
               value={filterEstado}
-              onChange={(e) => {
-                setFilterEstado(e.target.value);
+              onChange={(val) => {
+                setFilterEstado(val);
                 setPage(1);
               }}
-            >
-              <option value="">Todos los estados</option>
-              <option value="1">Solo Activos</option>
-              <option value="0">Solo Inactivos</option>
-            </select>
-          </div>
-        </div>
-      </div>
+              options={estadoOptions}
+              title="Filtrar por estado"
+            />
 
-      {/* Data Table */}
-      <DataTable
-        columns={columns}
-        data={clientes}
-        loading={loading}
-        emptyMessage="No se encontraron clientes registrados"
-        pagination={{
-          page,
-          totalPages,
-          totalRecords
-        }}
-        onPageChange={(newPage) => setPage(newPage)}
-      />
+            <PermissionGate permission="clientes.gestionar">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleOpenCreate}
+                title="Nuevo cliente"
+                aria-label="Nuevo cliente"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  padding: 0,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <UserPlus size={20} strokeWidth={2.4} />
+              </button>
+            </PermissionGate>
+          </>
+        }
+      >
+        {/* Tabla Embebida */}
+        <DataTable
+          columns={columns}
+          data={clientes}
+          loading={loading}
+          emptyMessage="No se encontraron clientes registrados"
+          pagination={{
+            page,
+            totalPages,
+            totalRecords
+          }}
+          onPageChange={(newPage) => setPage(newPage)}
+          embedded
+        />
+      </PageCard>
 
       {/* Modal Crear / Editar Cliente */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={modalMode === 'create' ? 'Registrar Nuevo Cliente' : `Editar Cliente #${selectedCliente?.id_cliente}`}
+        title={modalMode === 'create' ? 'Registrar Nuevo Cliente' : `Editar Cliente`}
         footer={
           <>
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-danger"
               onClick={() => setModalOpen(false)}
               disabled={submitting}
             >
@@ -370,7 +426,13 @@ export default function ClientesPage() {
                 id="email"
                 className={`form-control ${formErrors.email ? 'has-error' : ''}`}
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({ ...formData, email: val });
+                  if (formErrors.email && isValidEmail(val.trim())) {
+                    setFormErrors((prev) => ({ ...prev, email: undefined }));
+                  }
+                }}
                 placeholder="cliente@correo.com"
               />
             </FormField>
@@ -388,6 +450,41 @@ export default function ClientesPage() {
           </FormField>
         </form>
       </Modal>
-    </div>
+
+      {/* Alerta Personalizada para Desactivar / Activar Cliente */}
+      <ConfirmModal
+        isOpen={confirmToggleOpen}
+        onClose={() => {
+          if (!togglingStatus) {
+            setConfirmToggleOpen(false);
+            setClienteToToggle(null);
+          }
+        }}
+        onConfirm={handleConfirmToggleEstado}
+        title={clienteToToggle?.activo ? '¿Desactivar cliente?' : '¿Activar cliente?'}
+        variant={clienteToToggle?.activo ? 'danger' : 'primary'}
+        confirmText={clienteToToggle?.activo ? 'Sí, desactivar' : 'Sí, activar'}
+        loading={togglingStatus}
+        message={
+          clienteToToggle?.activo ? (
+            <>
+              ¿Estás seguro de que deseas desactivar al cliente{' '}
+              <strong style={{ color: 'var(--toy-ink)' }}>{clienteToToggle.nombre_razon_social}</strong>?
+              <div style={{ marginTop: '0.45rem', fontSize: '0.84rem', color: 'var(--toy-muted)' }}>
+                No aparecerá en la búsqueda rápida de ventas hasta que sea reactivado.
+              </div>
+            </>
+          ) : (
+            <>
+              ¿Estás seguro de que deseas reactivar al cliente{' '}
+              <strong style={{ color: 'var(--toy-ink)' }}>{clienteToToggle?.nombre_razon_social}</strong>?
+              <div style={{ marginTop: '0.45rem', fontSize: '0.84rem', color: 'var(--toy-muted)' }}>
+                El cliente volverá a estar disponible para facturación y ventas inmediatamente.
+              </div>
+            </>
+          )
+        }
+      />
+    </>
   );
 }

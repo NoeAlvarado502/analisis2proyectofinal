@@ -1,40 +1,41 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { Home, Users, ShieldCheck, UserCheck, Boxes, ToyBrick } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 
 export const MENU_ITEMS = [
   {
     path: '/inicio',
     label: 'Inicio',
-    icon: '🏠',
+    IconComponent: Home,
     permission: null,
     description: 'Resumen general y accesos rápidos'
   },
   {
     path: '/usuarios',
     label: 'Usuarios',
-    icon: '👥',
+    IconComponent: Users,
     permission: 'usuarios.gestionar',
     description: 'Gestión de personal y cuentas de acceso'
   },
   {
     path: '/roles',
     label: 'Roles y Permisos',
-    icon: '🛡️',
+    IconComponent: ShieldCheck,
     permission: 'roles.gestionar',
-    description: 'Control de accesos y matriz de privilegios'
+    description: 'Configuración de perfiles y permisos de usuario'
   },
   {
     path: '/clientes',
     label: 'Clientes',
-    icon: '🤝',
+    IconComponent: UserCheck,
     permission: 'clientes.consultar',
     description: 'Directorio de clientes y registro fiscal'
   },
   {
     path: '/productos',
     label: 'Productos',
-    icon: '🧸',
+    IconComponent: Boxes,
     permission: 'productos.consultar',
     description: 'Catálogo de juguetes, precios escalables y stock'
   }
@@ -50,31 +51,35 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <div className="brand-icon">🧸</div>
-        <div>
-          <div className="brand-title">Juguetería DB</div>
-          <div className="brand-subtitle">Análisis II · Sprint 1</div>
+        <div className="brand-icon">
+          <ToyBrick size={26} strokeWidth={2.4} />
+        </div>
+        <div className="flex items-center">
+          <span className="brand-title">
+            JUGUETERÍA QUETZAL
+          </span>
         </div>
       </div>
 
       <nav className="sidebar-nav">
-        {permittedItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `nav-item ${isActive ? 'active' : ''}`
-            }
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
+        {permittedItems.map((item) => {
+          const Icon = item.IconComponent;
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `nav-item ${isActive ? 'active' : ''}`
+              }
+            >
+              <span className="nav-icon">
+                <Icon size={22} strokeWidth={2.4} />
+              </span>
+              <span>{item.label}</span>
+            </NavLink>
+          );
+        })}
       </nav>
-
-      <div style={{ padding: '1rem', borderTop: '1px solid var(--border-subtle)', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-        Versión 0.1.0-sprint1
-      </div>
     </aside>
   );
 }
