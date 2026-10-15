@@ -5,15 +5,19 @@ node_modules/
 
 # Entornos y secretos
 .env
+.env.*
 .env.local
 .env.*.local
 .env.test
+.env.production
+!.env.example
 
 # Compilación y producción
 dist/
 build/
 out/
 coverage/
+.vite/
 
 # Logs
 *.log
@@ -24,6 +28,7 @@ yarn-error.log*
 # Sistema operativo e IDEs
 .DS_Store
 Thumbs.db
+desktop.ini
 .vscode/
 .idea/
 *.suo
@@ -31,3 +36,11 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Python (scripts de generación de reportes)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
