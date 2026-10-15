@@ -421,7 +421,7 @@ export default function UsuariosPage() {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={modalMode === 'create' ? 'Registrar Nuevo Usuario' : `Editar Usuario #${selectedUser?.id_usuario}`}
+        title={modalMode === 'create' ? 'Registrar Usuario' : `Editar Usuario #${selectedUser?.id_usuario}`}
         footer={
           <>
             <button
@@ -438,7 +438,7 @@ export default function UsuariosPage() {
               onClick={handleFormSubmit}
               disabled={submitting}
             >
-              {submitting ? 'Guardando...' : (modalMode === 'create' ? 'Crear Usuario' : 'Guardar Cambios')}
+              {submitting ? 'Guardando...' : (modalMode === 'create' ? 'Registrar Usuario' : 'Guardar Cambios')}
             </button>
           </>
         }

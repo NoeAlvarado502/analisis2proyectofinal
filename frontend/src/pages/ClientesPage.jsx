@@ -423,7 +423,7 @@ export default function ClientesPage() {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={modalMode === 'create' ? 'Registrar Nuevo Cliente' : `Editar Cliente`}
+        title={modalMode === 'create' ? 'Registrar Cliente' : `Editar Cliente`}
         footer={
           <>
             <button
@@ -440,7 +440,7 @@ export default function ClientesPage() {
               onClick={handleFormSubmit}
               disabled={submitting}
             >
-              {submitting ? 'Guardando...' : (modalMode === 'create' ? 'Crear Cliente' : 'Guardar Cambios')}
+              {submitting ? 'Guardando...' : (modalMode === 'create' ? 'Registrar Cliente' : 'Guardar Cambios')}
             </button>
           </>
         }

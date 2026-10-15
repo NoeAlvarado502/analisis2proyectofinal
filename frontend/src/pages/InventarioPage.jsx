@@ -19,6 +19,8 @@ import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import PageCard from '../components/PageCard';
 import PermissionGate from '../components/PermissionGate';
+import ToySwitch from '../components/ToySwitch';
+import SearchableSelect from '../components/SearchableSelect';
 
 // Helper de formato de edad idéntico a ProductosPage
 const formatEdadBadge = (meses) => {
@@ -84,8 +86,7 @@ export default function InventarioPage() {
     tipo_movimiento: 'AJUSTE',
     cantidad: 1,
     es_negativo: false,
-    motivo: '',
-    documento_id: ''
+    motivo: ''
   });
   const [submittingAjuste, setSubmittingAjuste] = useState(false);
 
@@ -255,8 +256,7 @@ export default function InventarioPage() {
       tipo_movimiento: 'AJUSTE',
       cantidad: 1,
       es_negativo: false,
-      motivo: '',
-      documento_id: ''
+      motivo: ''
     });
     setModalAjusteOpen(true);
   };
@@ -267,8 +267,7 @@ export default function InventarioPage() {
       tipo_movimiento: 'AJUSTE',
       cantidad: 1,
       es_negativo: false,
-      motivo: '',
-      documento_id: ''
+      motivo: ''
     });
     setModalAjusteOpen(true);
   };
@@ -286,16 +285,56 @@ export default function InventarioPage() {
     setPageMov(1);
   };
 
+  // Cálculo dinámico para la simulación de impacto de stock en el modal de ajuste
+  const currentProductAjuste = useMemo(() => {
+    if (!ajusteForm.id_producto) return null;
+    return (
+      existencias.find((p) => String(p.id_producto) === String(ajusteForm.id_producto)) ||
+      productosList.find((p) => String(p.id_producto) === String(ajusteForm.id_producto)) ||
+      null
+    );
+  }, [ajusteForm.id_producto, existencias, productosList]);
+
+  const stockActualAjuste = currentProductAjuste ? Number(currentProductAjuste.stock_actual ?? 0) : 0;
+  const cantAjusteParsed = Math.max(0, parseInt(ajusteForm.cantidad, 10) || 0);
+  const esDisminucionAjuste = ajusteForm.tipo_movimiento === 'AJUSTE' && Boolean(ajusteForm.es_negativo);
+  const deltaAjuste = esDisminucionAjuste ? -cantAjusteParsed : cantAjusteParsed;
+  const stockProyectadoAjuste = stockActualAjuste + deltaAjuste;
+  const esStockNegativoAjuste = esDisminucionAjuste && stockProyectadoAjuste < 0;
+
+  // Opciones de productos para el SearchableSelect del modal de ajuste
+  const productosAjusteOptions = useMemo(() => {
+    const list = productosList.length > 0 ? productosList : existencias;
+    return list.map((p) => ({
+      value: String(p.id_producto),
+      label: p.nombre,
+      badge: p.codigo_sku,
+      subtitle: `Stock actual: ${p.stock_actual ?? 0} uds`,
+      searchKey: `${p.codigo_sku} ${p.nombre} ${p.categoria || ''}`
+    }));
+  }, [productosList, existencias]);
+
   const handleSaveAjuste = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    const cantNum = parseInt(ajusteForm.cantidad, 10);
-    if (isNaN(cantNum) || cantNum <= 0) {
-      toast.error('La cantidad debe ser un número entero positivo mayor a 0');
+    const cantNum = Number(ajusteForm.cantidad);
+    if (isNaN(cantNum) || !Number.isInteger(cantNum) || cantNum <= 0) {
+      toast.error('La cantidad debe ser un número entero mayor a 0 (no se permiten decimales)');
       return;
     }
 
-    if (!ajusteForm.motivo.trim()) {
+    const motivoTrim = ajusteForm.motivo.trim();
+    if (!motivoTrim) {
       toast.error('Debe ingresar un motivo para registrar el movimiento en la bitácora');
+      return;
+    }
+
+    if (/^\d+$/.test(motivoTrim)) {
+      toast.error('El motivo no puede ser solo números. Ingrese una descripción válida.');
+      return;
+    }
+
+    if (motivoTrim.length < 3) {
+      toast.error('El motivo debe tener al menos 3 caracteres');
       return;
     }
 
@@ -304,19 +343,27 @@ export default function InventarioPage() {
       return;
     }
 
+    if (esDisminucionAjuste && stockActualAjuste < cantNum) {
+      toast.error(`Inventario insuficiente: no es posible retirar ${cantNum} unidades porque solo hay ${stockActualAjuste} en almacén.`);
+      return;
+    }
+
     setSubmittingAjuste(true);
     try {
-      const finalCantidad = ajusteForm.tipo_movimiento === 'AJUSTE' && ajusteForm.es_negativo ? -cantNum : cantNum;
+      const finalCantidad = esDisminucionAjuste ? -cantNum : cantNum;
 
-      await api.post('/inventario/movimientos', {
+      await api.post('/inventario/ajustes', {
         id_producto: parseInt(ajusteForm.id_producto, 10),
         tipo_movimiento: ajusteForm.tipo_movimiento,
         cantidad: finalCantidad,
-        motivo: ajusteForm.motivo.trim(),
-        documento_id: ajusteForm.documento_id.trim() || undefined
+        motivo: motivoTrim
       });
 
-      toast.success('Movimiento registrado en Kardex y existencias actualizadas');
+      toast.success(
+        esDisminucionAjuste
+          ? `Disminución de ${cantNum} unidades registrada exitosamente en Kardex`
+          : `Ingreso de ${cantNum} unidades registrado exitosamente en Kardex`
+      );
       setModalAjusteOpen(false);
 
       if (activeTab === 'existencias') fetchExistencias();
@@ -1137,11 +1184,11 @@ export default function InventarioPage() {
         </form>
       </Modal>
 
-      {/* Modal 2: Registrar Ajuste / Devolución */}
+      {/* Modal 2: Registrar Movimiento */}
       <Modal
         isOpen={modalAjusteOpen}
         onClose={() => setModalAjusteOpen(false)}
-        title="Registrar Ajuste / Devolución en Kardex"
+        title="Registrar Movimiento"
         size="md"
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', width: '100%' }}>
@@ -1157,7 +1204,7 @@ export default function InventarioPage() {
               type="button"
               className="btn btn-primary"
               onClick={handleSaveAjuste}
-              disabled={submittingAjuste}
+              disabled={submittingAjuste || esStockNegativoAjuste || cantAjusteParsed <= 0}
             >
               {submittingAjuste ? 'Registrando...' : 'Registrar Movimiento'}
             </button>
@@ -1165,19 +1212,63 @@ export default function InventarioPage() {
         }
       >
         <form onSubmit={handleSaveAjuste}>
-          <FormField label="Juguete / Producto" name="id_producto" required>
-            <select
-              id="id_producto"
-              className="form-control"
+          <FormField label="Producto" name="id_producto" required>
+            <SearchableSelect
+              options={productosAjusteOptions}
               value={ajusteForm.id_producto}
-              onChange={(e) => setAjusteForm({ ...ajusteForm, id_producto: e.target.value })}
-            >
-              {productosList.map((p) => (
-                <option key={p.id_producto} value={p.id_producto}>
-                  {p.codigo_sku} - {p.nombre} (Stock: {p.stock_actual ?? 0})
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setAjusteForm((prev) => ({ ...prev, id_producto: val }))}
+              placeholder="Seleccionar producto..."
+              searchPlaceholder="Buscar por nombre o SKU..."
+              renderOption={(opt, isSelected) => (
+                <div title={`${opt.badge ? `[${opt.badge}] ` : ''}${opt.label}`} style={{ minWidth: 0, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      fontWeight: isSelected ? 800 : 700,
+                      fontSize: '0.85rem',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    {opt.label}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.15rem' }}>
+                    <code style={{ fontSize: '0.72rem' }}>{opt.badge}</code>
+                    {opt.subtitle && (
+                      <span style={{ fontSize: '0.73rem', color: 'var(--toy-muted)' }}>
+                        {opt.subtitle}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+              renderSelected={(opt) => (
+                <div
+                  title={`${opt.badge ? `[${opt.badge}] ` : ''}${opt.label}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, overflow: 'hidden', width: '100%' }}
+                >
+                  <code style={{ fontSize: '0.74rem', flexShrink: 0 }}>{opt.badge}</code>
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      color: 'var(--toy-ink)',
+                      fontSize: '0.86rem',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      flex: 1
+                    }}
+                  >
+                    {opt.label}
+                  </span>
+                  {opt.subtitle && (
+                    <span style={{ fontSize: '0.72rem', color: 'var(--toy-muted)', flexShrink: 0 }}>
+                      {opt.subtitle}
+                    </span>
+                  )}
+                </div>
+              )}
+            />
           </FormField>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -1186,10 +1277,17 @@ export default function InventarioPage() {
                 id="tipo_movimiento"
                 className="form-control"
                 value={ajusteForm.tipo_movimiento}
-                onChange={(e) => setAjusteForm({ ...ajusteForm, tipo_movimiento: e.target.value })}
+                onChange={(e) => {
+                  const newTipo = e.target.value;
+                  setAjusteForm((prev) => ({
+                    ...prev,
+                    tipo_movimiento: newTipo,
+                    es_negativo: newTipo === 'DEVOLUCION' ? false : prev.es_negativo
+                  }));
+                }}
               >
-                <option value="AJUSTE">AJUSTE (Auditoría física)</option>
-                <option value="DEVOLUCION">DEVOLUCIÓN (Reingreso)</option>
+                <option value="AJUSTE">AJUSTE</option>
+                <option value="DEVOLUCION">DEVOLUCIÓN</option>
               </select>
             </FormField>
 
@@ -1198,53 +1296,123 @@ export default function InventarioPage() {
                 id="cantidad"
                 type="number"
                 min="1"
+                step="1"
                 className="form-control"
                 value={ajusteForm.cantidad}
-                onChange={(e) => setAjusteForm({ ...ajusteForm, cantidad: e.target.value })}
+                onChange={(e) => {
+                  const digitsOnly = e.target.value.replace(/\D/g, '');
+                  setAjusteForm((prev) => ({ ...prev, cantidad: digitsOnly ? parseInt(digitsOnly, 10) : '' }));
+                }}
+                onKeyDown={(e) => {
+                  if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                placeholder="1"
               />
             </FormField>
           </div>
 
-          {ajusteForm.tipo_movimiento === 'AJUSTE' && (
-            <div
+          {/* Switch de Sentido: Añadir (Azul) / Quitar (Rojo) */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.85rem',
+              padding: '0.6rem 0.85rem',
+              backgroundColor: 'var(--toy-bg)',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--toy-border-light)',
+              margin: '0.25rem 0 1rem 0'
+            }}
+          >
+            <span
               style={{
-                backgroundColor: 'rgba(255, 157, 46, 0.1)',
-                border: '1px solid rgba(255, 157, 46, 0.3)',
-                borderRadius: '10px',
-                padding: '0.65rem 0.85rem',
-                margin: '0.5rem 0 1rem 0',
-                display: 'flex',
+                fontSize: '0.84rem',
+                fontWeight: 800,
+                color: !ajusteForm.es_negativo ? 'var(--toy-blue)' : 'var(--toy-muted)',
+                cursor: 'pointer',
+                userSelect: 'none',
+                transition: 'color 0.18s ease'
+              }}
+              onClick={() => setAjusteForm((prev) => ({ ...prev, es_negativo: false }))}
+            >
+              Añadir (+)
+            </span>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={ajusteForm.es_negativo}
+              disabled={ajusteForm.tipo_movimiento === 'DEVOLUCION'}
+              onClick={() => {
+                if (ajusteForm.tipo_movimiento === 'DEVOLUCION') return;
+                setAjusteForm((prev) => ({ ...prev, es_negativo: !prev.es_negativo }));
+              }}
+              title={
+                ajusteForm.tipo_movimiento === 'DEVOLUCION'
+                  ? 'Devolución siempre reingresa existencias (+)'
+                  : ajusteForm.es_negativo
+                  ? 'Cambiar a Añadir (+)'
+                  : 'Cambiar a Quitar (-)'
+              }
+              aria-label="Alternar entre añadir y quitar existencias"
+              style={{
+                position: 'relative',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.65rem'
+                width: '44px',
+                height: '24px',
+                padding: '0 2px',
+                backgroundColor: ajusteForm.es_negativo ? 'var(--toy-red)' : 'var(--toy-blue)',
+                borderColor: ajusteForm.es_negativo ? 'var(--toy-red-dark)' : 'var(--toy-deep-blue)',
+                borderWidth: '2px',
+                borderStyle: 'solid',
+                borderRadius: '999px',
+                cursor: ajusteForm.tipo_movimiento === 'DEVOLUCION' ? 'not-allowed' : 'pointer',
+                opacity: ajusteForm.tipo_movimiento === 'DEVOLUCION' ? 0.45 : 1,
+                boxShadow: ajusteForm.es_negativo
+                  ? '0 2px 6px rgba(241, 91, 74, 0.35)'
+                  : '0 2px 6px rgba(25, 168, 232, 0.35)',
+                transition: 'background-color 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease',
+                flexShrink: 0,
+                outline: 'none'
               }}
             >
-              <input
-                id="es_negativo"
-                type="checkbox"
-                style={{ width: '17px', height: '17px', cursor: 'pointer' }}
-                checked={ajusteForm.es_negativo}
-                onChange={(e) => setAjusteForm({ ...ajusteForm, es_negativo: e.target.checked })}
+              <span
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '50%',
+                  boxShadow: '0 2px 4px rgba(58, 42, 34, 0.25)',
+                  transition: 'transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1)',
+                  transform: ajusteForm.es_negativo ? 'translateX(18px)' : 'translateX(0)'
+                }}
               />
-              <label htmlFor="es_negativo" style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
-                Disminución de inventario (Merma, daño o faltante físico)
-              </label>
-            </div>
-          )}
+            </button>
 
-          <FormField
-            label="Documento / Folio de Respaldo"
-            name="documento_id"
-            helpText="Opcional. Si se deja en blanco, el sistema generará uno automáticamente."
-          >
-            <input
-              id="documento_id"
-              type="text"
-              className="form-control"
-              placeholder="Ej: ACTA-002, MEMO-89"
-              value={ajusteForm.documento_id}
-              onChange={(e) => setAjusteForm({ ...ajusteForm, documento_id: e.target.value })}
-            />
-          </FormField>
+            <span
+              style={{
+                fontSize: '0.84rem',
+                fontWeight: 800,
+                color: ajusteForm.es_negativo ? 'var(--toy-red)' : 'var(--toy-muted)',
+                cursor: ajusteForm.tipo_movimiento === 'DEVOLUCION' ? 'not-allowed' : 'pointer',
+                opacity: ajusteForm.tipo_movimiento === 'DEVOLUCION' ? 0.45 : 1,
+                userSelect: 'none',
+                transition: 'color 0.18s ease'
+              }}
+              onClick={() => {
+                if (ajusteForm.tipo_movimiento === 'DEVOLUCION') return;
+                setAjusteForm((prev) => ({ ...prev, es_negativo: true }));
+              }}
+            >
+              Quitar (-)
+            </span>
+          </div>
+
+
 
           <FormField label="Motivo de la Operación" name="motivo" required>
             <textarea

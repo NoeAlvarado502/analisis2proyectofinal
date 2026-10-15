@@ -159,18 +159,45 @@ export class InventarioService {
 
   /**
    * Inserta un ajuste o devolución en movimientos_inventario usando withUser
+   * Genera automáticamente el correlativo autoincrementable (AJU-0001, AJU-0002... o DEV-0001, DEV-0002...)
    */
-  static async registrarAjuste({ id_producto, tipo_movimiento = 'AJUSTE', cantidad, motivo, documento_tipo = 'AJUSTE_FISICO', documento_id }, currentUserId, ip = null) {
-    const docId = documento_id && documento_id.trim() !== ''
-      ? documento_id.trim()
-      : `${tipo_movimiento.substring(0, 3)}-${Date.now()}`;
+  static async registrarAjuste({ id_producto, tipo_movimiento = 'AJUSTE', cantidad, motivo, documento_tipo, documento_id }, currentUserId, ip = null) {
+    const prefijo = tipo_movimiento === 'DEVOLUCION' ? 'DEV' : 'AJU';
+    const docTipo = documento_tipo || (tipo_movimiento === 'DEVOLUCION' ? 'DEVOLUCION' : 'AJUSTE');
 
     const insertId = await withUser(currentUserId, async (conn) => {
+      let docId = documento_id && documento_id.trim() !== '' ? documento_id.trim() : null;
+
+      if (!docId) {
+        // Consultar el último folio generado para este prefijo dentro de la transacción con bloqueo FOR UPDATE
+        const [rows] = await conn.execute(
+          `SELECT documento_id
+           FROM movimientos_inventario
+           WHERE documento_id LIKE CONCAT(?, '-%')
+           ORDER BY id_movimiento DESC
+           LIMIT 1
+           FOR UPDATE`,
+          [prefijo]
+        );
+
+        if (!rows || rows.length === 0) {
+          docId = `${prefijo}-0001`;
+        } else {
+          const match = rows[0].documento_id.match(new RegExp(`^${prefijo}-(\\d+)$`, 'i'));
+          if (match) {
+            const nextNum = parseInt(match[1], 10) + 1;
+            docId = `${prefijo}-${String(nextNum).padStart(4, '0')}`;
+          } else {
+            docId = `${prefijo}-0001`;
+          }
+        }
+      }
+
       const [res] = await conn.execute(
         `INSERT INTO movimientos_inventario
          (id_producto, id_usuario, tipo_movimiento, cantidad, documento_tipo, documento_id, motivo)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id_producto, currentUserId, tipo_movimiento, cantidad, documento_tipo, docId, motivo]
+        [id_producto, currentUserId, tipo_movimiento, cantidad, docTipo, docId, motivo]
       );
       return res.insertId;
     }, ip);

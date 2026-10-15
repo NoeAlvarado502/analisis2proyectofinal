@@ -6,7 +6,12 @@ export const ajusteInventarioSchema = z.object({
   cantidad: z.coerce.number().int().refine(val => val !== 0, {
     message: 'La cantidad no puede ser cero'
   }),
-  motivo: z.string().trim().min(3, 'El motivo es obligatorio (mínimo 3 caracteres)').max(255),
+  motivo: z.string().trim()
+    .min(3, 'El motivo es obligatorio (mínimo 3 caracteres)')
+    .max(255)
+    .refine(val => !/^\d+$/.test(val), {
+      message: 'El motivo no puede ser solo números'
+    }),
   documento_tipo: z.string().trim().max(30).optional().default('AJUSTE_FISICO'),
   documento_id: z.string().trim().max(50).optional()
 }).refine(data => {

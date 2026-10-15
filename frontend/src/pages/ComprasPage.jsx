@@ -585,7 +585,7 @@ export default function ComprasPage() {
       <Modal
         isOpen={formModalOpen}
         onClose={() => !submitting && setFormModalOpen(false)}
-        title={modalMode === 'create' ? 'Registrar Nueva Compra' : 'Editar Compra Registrada'}
+        title={modalMode === 'create' ? 'Registrar Compra' : 'Editar Compra Registrada'}
         size="lg"
         footer={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -608,7 +608,7 @@ export default function ComprasPage() {
                 disabled={submitting || detallesList.length === 0}
                 style={{ minWidth: '140px' }}
               >
-                {submitting ? 'Procesando...' : modalMode === 'create' ? 'Crear Compra' : 'Guardar Cambios'}
+                {submitting ? 'Procesando...' : modalMode === 'create' ? 'Registrar Compra' : 'Guardar Cambios'}
               </button>
             </div>
           </div>
@@ -663,93 +663,100 @@ export default function ComprasPage() {
             />
           </FormField>
 
-          {/* Switch de estado al registrar (Registrada vs Recibida) */}
+          {/* Switch de Estado al Registrar: Registrada (Naranja) / Recibida (Verde) */}
           {modalMode === 'create' && (
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.85rem 1.15rem',
-                backgroundColor: formData.recibir_inmediatamente ? 'rgba(116, 201, 91, 0.08)' : 'rgba(255, 157, 46, 0.08)',
-                border: `1.5px solid ${formData.recibir_inmediatamente ? 'rgba(116, 201, 91, 0.35)' : 'rgba(255, 157, 46, 0.35)'}`,
-                borderRadius: '14px',
-                margin: '1rem 0',
-                transition: 'all 0.2s ease',
-                gap: '1rem'
+                justifyContent: 'center',
+                gap: '0.85rem',
+                padding: '0.6rem 0.85rem',
+                backgroundColor: 'var(--toy-bg)',
+                borderRadius: 'var(--radius-md)',
+                border: '1.5px solid var(--toy-border-light)',
+                margin: '0.5rem 0 1.25rem 0'
               }}
             >
-              <div>
-                <div
-                  style={{
-                    fontSize: '0.74rem',
-                    fontWeight: 800,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    color: 'var(--toy-muted)',
-                    marginBottom: '0.25rem'
-                  }}
-                >
-                  Estado al registrar
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span
-                    className={`badge ${formData.recibir_inmediatamente ? 'badge-success' : 'badge-warning'}`}
-                    style={{
-                      fontSize: '0.84rem',
-                      padding: '0.25rem 0.65rem',
-                      fontWeight: 800,
-                      backgroundColor: formData.recibir_inmediatamente ? undefined : 'rgba(255, 157, 46, 0.15)',
-                      color: formData.recibir_inmediatamente ? undefined : 'var(--toy-orange-dark)',
-                      border: formData.recibir_inmediatamente ? undefined : '1px solid rgba(255, 157, 46, 0.35)'
-                    }}
-                  >
-                    {formData.recibir_inmediatamente ? 'Recibida' : 'Registrada'}
-                  </span>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--toy-muted)', fontWeight: 600 }}>
-                    {formData.recibir_inmediatamente
-                      ? '(Ingresa stock a inventario automáticamente)'
-                      : '(Orden pendiente de entrega, no afecta inventario)'}
-                  </span>
-                </div>
-              </div>
+              <span
+                style={{
+                  fontSize: '0.84rem',
+                  fontWeight: 800,
+                  color: !formData.recibir_inmediatamente ? 'var(--toy-orange-dark)' : 'var(--toy-muted)',
+                  cursor: canReceiveCompras ? 'pointer' : 'default',
+                  userSelect: 'none',
+                  transition: 'color 0.18s ease'
+                }}
+                onClick={() => canReceiveCompras && setFormData((prev) => ({ ...prev, recibir_inmediatamente: false }))}
+              >
+                Registrada
+              </span>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexShrink: 0 }}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={formData.recibir_inmediatamente}
+                disabled={!canReceiveCompras}
+                onClick={() => {
+                  if (!canReceiveCompras) return;
+                  setFormData((prev) => ({ ...prev, recibir_inmediatamente: !prev.recibir_inmediatamente }));
+                }}
+                title={
+                  !canReceiveCompras
+                    ? 'Sin permisos para recibir compras inmediatamente'
+                    : formData.recibir_inmediatamente
+                    ? 'Cambiar a Registrada'
+                    : 'Cambiar a Recibida'
+                }
+                aria-label="Alternar entre estado Registrada y Recibida"
+                style={{
+                  position: 'relative',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  width: '44px',
+                  height: '24px',
+                  padding: '0 2px',
+                  backgroundColor: formData.recibir_inmediatamente ? 'var(--toy-green)' : 'var(--toy-orange)',
+                  borderColor: formData.recibir_inmediatamente ? 'var(--toy-green-dark)' : 'var(--toy-orange-dark)',
+                  borderWidth: '2px',
+                  borderStyle: 'solid',
+                  borderRadius: '999px',
+                  cursor: canReceiveCompras ? 'pointer' : 'not-allowed',
+                  opacity: canReceiveCompras ? 1 : 0.5,
+                  boxShadow: formData.recibir_inmediatamente
+                    ? '0 2px 6px rgba(116, 201, 91, 0.35)'
+                    : '0 2px 6px rgba(255, 157, 46, 0.35)',
+                  transition: 'background-color 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease',
+                  flexShrink: 0,
+                  outline: 'none'
+                }}
+              >
                 <span
                   style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    color: !formData.recibir_inmediatamente ? 'var(--toy-orange-dark)' : 'var(--toy-muted)',
-                    cursor: canReceiveCompras ? 'pointer' : 'default'
+                    width: '16px',
+                    height: '16px',
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '50%',
+                    boxShadow: '0 2px 4px rgba(58, 42, 34, 0.25)',
+                    transition: 'transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1)',
+                    transform: formData.recibir_inmediatamente ? 'translateX(18px)' : 'translateX(0)'
                   }}
-                  onClick={() => canReceiveCompras && setFormData((prev) => ({ ...prev, recibir_inmediatamente: false }))}
-                >
-                  Registrada
-                </span>
-
-                <ToySwitch
-                  checked={formData.recibir_inmediatamente}
-                  disabled={!canReceiveCompras}
-                  onChange={() =>
-                    canReceiveCompras &&
-                    setFormData((prev) => ({ ...prev, recibir_inmediatamente: !prev.recibir_inmediatamente }))
-                  }
-                  title={formData.recibir_inmediatamente ? 'Cambiar a Registrada' : 'Cambiar a Recibida'}
-                  ariaLabel="Alternar entre estado Registrada y Recibida"
                 />
+              </button>
 
-                <span
-                  style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    color: formData.recibir_inmediatamente ? 'var(--toy-green-dark)' : 'var(--toy-muted)',
-                    cursor: canReceiveCompras ? 'pointer' : 'default'
-                  }}
-                  onClick={() => canReceiveCompras && setFormData((prev) => ({ ...prev, recibir_inmediatamente: true }))}
-                >
-                  Recibida
-                </span>
-              </div>
+              <span
+                style={{
+                  fontSize: '0.84rem',
+                  fontWeight: 800,
+                  color: formData.recibir_inmediatamente ? 'var(--toy-green-dark)' : 'var(--toy-muted)',
+                  cursor: canReceiveCompras ? 'pointer' : 'default',
+                  userSelect: 'none',
+                  transition: 'color 0.18s ease'
+                }}
+                onClick={() => canReceiveCompras && setFormData((prev) => ({ ...prev, recibir_inmediatamente: true }))}
+              >
+                Recibida
+              </span>
             </div>
           )}
 

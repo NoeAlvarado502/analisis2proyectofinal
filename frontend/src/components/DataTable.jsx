@@ -76,7 +76,8 @@ export default function DataTable({
                     position: embedded ? 'sticky' : undefined,
                     top: embedded ? 0 : undefined,
                     zIndex: embedded ? 10 : undefined,
-                    borderBottom: '2px solid var(--toy-border-light)'
+                    borderBottom: '2px solid var(--toy-border-light)',
+                    boxShadow: '0 2px 0 var(--toy-border-light)'
                   }}
                 >
                   {col.header}

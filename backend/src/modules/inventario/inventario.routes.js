@@ -32,6 +32,12 @@ inventarioRouter.post(
   InventarioController.registrarAjuste
 );
 
+inventarioRouter.post(
+  '/movimientos',
+  requirePermission('inventario.ajustar'),
+  InventarioController.registrarAjuste
+);
+
 // Actualización de stock mínimo (requiere productos.gestionar o inventario.ajustar)
 inventarioRouter.patch(
   '/:id_producto/stock-minimo',

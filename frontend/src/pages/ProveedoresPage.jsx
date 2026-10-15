@@ -440,7 +440,7 @@ export default function ProveedoresPage() {
       <Modal
         isOpen={modalOpen}
         onClose={() => !submitting && setModalOpen(false)}
-        title={modalMode === 'create' ? 'Registrar Nuevo Proveedor' : 'Editar Proveedor'}
+        title={modalMode === 'create' ? 'Registrar Proveedor' : 'Editar Proveedor'}
         footer={
           <>
             <button
@@ -457,7 +457,7 @@ export default function ProveedoresPage() {
               onClick={handleFormSubmit}
               disabled={submitting}
             >
-              {submitting ? 'Guardando...' : (modalMode === 'create' ? 'Crear Proveedor' : 'Guardar Cambios')}
+              {submitting ? 'Guardando...' : (modalMode === 'create' ? 'Registrar Proveedor' : 'Guardar Cambios')}
             </button>
           </>
         }

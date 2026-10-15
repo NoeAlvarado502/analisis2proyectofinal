@@ -712,7 +712,7 @@ export default function ProductosPage() {
               onClick={handleFormSubmit}
               disabled={submitting}
             >
-              {submitting ? 'Guardando...' : (modalMode === 'create' ? 'Crear Producto' : 'Guardar Cambios')}
+              {submitting ? 'Guardando...' : (modalMode === 'create' ? 'Registrar Producto' : 'Guardar Cambios')}
             </button>
           </>
         }

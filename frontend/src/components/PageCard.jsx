@@ -16,10 +16,16 @@ export default function PageCard({
   toolbarBorder = false
 }) {
   return (
-    <div className={`card card-unificada ${className}`} style={style}>
+    <div className={`card card-unificada ${className}`} style={{ overflow: 'hidden', ...style }}>
       <div
         className="card-toolbar"
         style={{
+          borderTopLeftRadius: '20px',
+          borderTopRightRadius: '20px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 25,
+          backgroundColor: '#FFFFFF',
           borderBottom: toolbarBorder ? '2px solid var(--toy-border-light)' : 'none'
         }}
       >
@@ -71,7 +77,9 @@ export default function PageCard({
         )}
       </div>
 
-      {children}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {children}
+      </div>
     </div>
   );
 }
