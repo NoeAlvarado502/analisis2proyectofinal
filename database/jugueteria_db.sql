@@ -512,6 +512,31 @@ BEGIN
         JSON_OBJECT('nombre', NEW.nombre_razon_social, 'identificacion', NEW.identificacion, 'activo', NEW.activo));
 END$$
 
+CREATE TRIGGER trg_proveedores_ai AFTER INSERT ON proveedores FOR EACH ROW
+BEGIN
+    CALL sp_auditar('Proveedores', 'Creación', CONCAT('PRV-', NEW.id_proveedor), NULL,
+        JSON_OBJECT('razon_social', NEW.razon_social, 'identificacion_fiscal', NEW.identificacion_fiscal, 'activo', NEW.activo));
+END$$
+
+CREATE TRIGGER trg_proveedores_au AFTER UPDATE ON proveedores FOR EACH ROW
+BEGIN
+    IF NOT (OLD.razon_social <=> NEW.razon_social AND OLD.identificacion_fiscal <=> NEW.identificacion_fiscal
+            AND OLD.contacto_nombre <=> NEW.contacto_nombre AND OLD.telefono <=> NEW.telefono
+            AND OLD.email <=> NEW.email AND OLD.direccion <=> NEW.direccion AND OLD.activo <=> NEW.activo) THEN
+        CALL sp_auditar('Proveedores', 'Modificación', CONCAT('PRV-', NEW.id_proveedor),
+            JSON_OBJECT('razon_social', OLD.razon_social, 'identificacion_fiscal', OLD.identificacion_fiscal, 'activo', OLD.activo),
+            JSON_OBJECT('razon_social', NEW.razon_social, 'identificacion_fiscal', NEW.identificacion_fiscal, 'activo', NEW.activo));
+    END IF;
+END$$
+
+CREATE TRIGGER trg_proveedores_bd BEFORE DELETE ON proveedores FOR EACH ROW
+BEGIN
+    IF EXISTS (SELECT 1 FROM compras WHERE id_proveedor = OLD.id_proveedor) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Proveedor con compras registradas: no se elimina, debe pasar a estado inactivo';
+    END IF;
+END$$
+
 CREATE TRIGGER trg_config_au AFTER UPDATE ON configuraciones FOR EACH ROW
 BEGIN
     CALL sp_auditar('Configuración', 'Modificación', NEW.clave,
@@ -531,11 +556,34 @@ END$$
 
 CREATE TRIGGER trg_productos_au AFTER UPDATE ON productos FOR EACH ROW
 BEGIN
+    DECLARE v_stock INT;
+
     CALL sp_auditar('Productos', 'Modificación', NEW.codigo_sku,
         JSON_OBJECT('nombre', OLD.nombre, 'id_categoria', OLD.id_categoria,
                     'stock_minimo', OLD.stock_minimo, 'activo', OLD.activo),
         JSON_OBJECT('nombre', NEW.nombre, 'id_categoria', NEW.id_categoria,
                     'stock_minimo', NEW.stock_minimo, 'activo', NEW.activo));
+
+    IF OLD.stock_minimo <> NEW.stock_minimo THEN
+        SELECT stock_actual INTO v_stock FROM inventario WHERE id_producto = NEW.id_producto;
+        IF v_stock IS NOT NULL THEN
+            IF v_stock <= NEW.stock_minimo THEN
+                IF NOT EXISTS (SELECT 1 FROM alertas_inventario
+                                WHERE id_producto = NEW.id_producto AND estado = 'ACTIVA') THEN
+                    INSERT INTO alertas_inventario (id_producto, stock_al_generar, stock_minimo)
+                    VALUES (NEW.id_producto, v_stock, NEW.stock_minimo);
+                ELSE
+                    UPDATE alertas_inventario
+                       SET stock_minimo = NEW.stock_minimo, stock_al_generar = v_stock
+                     WHERE id_producto = NEW.id_producto AND estado = 'ACTIVA';
+                END IF;
+            ELSE
+                UPDATE alertas_inventario
+                   SET estado = 'ATENDIDA', fecha_atencion = NOW()
+                 WHERE id_producto = NEW.id_producto AND estado = 'ACTIVA';
+            END IF;
+        END IF;
+    END IF;
 END$$
 
 -- RN04: con movimientos o documentos no se elimina; se inactiva

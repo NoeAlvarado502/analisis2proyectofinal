@@ -56,10 +56,13 @@ export function AuthProvider({ children }) {
     window.location.href = '/login';
   }, []);
 
-  // Check if current user has a specific permission
+  // Check if current user has a specific permission (or any of the provided permissions)
   const can = useCallback((permissionCode) => {
     if (!permissionCode) return true;
     if (!permissions || permissions.length === 0) return false;
+    if (Array.isArray(permissionCode)) {
+      return permissionCode.some((p) => permissions.includes(p));
+    }
     return permissions.includes(permissionCode);
   }, [permissions]);
 

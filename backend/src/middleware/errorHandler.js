@@ -28,7 +28,7 @@ export function errorHandler(err, req, res, next) {
       message = 'Ya existe un usuario con ese correo electrónico';
     } else if (err.sqlMessage && err.sqlMessage.includes('codigo_sku')) {
       message = 'Ya existe un producto con ese código SKU';
-    } else if (err.sqlMessage && err.sqlMessage.includes('identificacion')) {
+    } else if (err.sqlMessage && (err.sqlMessage.includes('identificacion') || err.sqlMessage.includes('identificacion_fiscal'))) {
       message = 'Ya existe un cliente o proveedor con esa identificación';
     }
 
@@ -42,7 +42,7 @@ export function errorHandler(err, req, res, next) {
   }
 
   // 3. Error MySQL SQLSTATE 45000 (Reglas de negocio desde Triggers / SIGNAL) -> HTTP 409 Conflict
-  if (err.sqlState === '45000') {
+  if (err.sqlState === '45000' || err.code === 'ER_SIGNAL_EXCEPTION' || err.errno === 1644) {
     return res.status(409).json({
       error: {
         code: 'BUSINESS_RULE_VIOLATION',

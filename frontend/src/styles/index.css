@@ -637,6 +637,35 @@ a:hover {
   flex-shrink: 0;
 }
 
+/* Botón de eliminación en tablas/detalles con sombra y borde rojo acorde */
+.btn-delete-item {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #FFF5F4;
+  border: 1.5px solid rgba(241, 91, 74, 0.45);
+  color: var(--toy-red);
+  box-shadow: 0 3px 0 var(--toy-red-dark);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-delete-item:hover:not(:disabled) {
+  background: var(--toy-red);
+  border-color: var(--toy-red-dark);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 var(--toy-red-dark), 0 6px 12px rgba(241, 91, 74, 0.35);
+}
+.btn-delete-item:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--toy-red-dark);
+}
+
 /* ==========================================================================
    TOY SWITCH (TOGGLE FÍSICO TÁCTIL)
    ========================================================================== */

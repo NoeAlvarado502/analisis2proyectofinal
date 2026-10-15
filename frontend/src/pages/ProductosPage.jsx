@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { PackagePlus, Pencil, AlertTriangle, AlertCircle, Plus, Boxes, List, Package, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { PackagePlus, Pencil, AlertTriangle, AlertCircle, Plus, Sparkles } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
@@ -16,42 +16,13 @@ import { parseApiErrors } from '../utils/formValidators';
 
 import {
   NIVELES_CANTIDAD,
-  NIVELES_METADATA,
-  ESTRATEGIAS_PRECIO,
-  calcularEscalasAutomaticas,
-  obtenerDetalleEscala
+  calcularEscalasAutomaticas
 } from '../utils/pricingEngine';
-
-// Presets intuitivos de edad recomendada para juguetería
-const EDAD_PRESETS = [
-  { label: '0m', meses: 0, tag: '⭐ Todas (0+)' },
-  { label: '6m', meses: 6, tag: '🍼 +6 meses' },
-  { label: '1 año', meses: 12, tag: '🧸 +1 año' },
-  { label: '1.5 años', meses: 18, tag: '🚗 +18 meses' },
-  { label: '2 años', meses: 24, tag: '🧩 +2 años' },
-  { label: '3 años', meses: 36, tag: '⚠️ +3 años' },
-  { label: '4 años', meses: 48, tag: '🎨 +4 años' },
-  { label: '5 años', meses: 60, tag: '🚀 +5 años' },
-  { label: '6 años', meses: 72, tag: '🔬 +6 años' },
-  { label: '8 años', meses: 96, tag: '🎯 +8 años' },
-  { label: '10 años', meses: 120, tag: '🎮 +10 años' },
-  { label: '12+ años', meses: 144, tag: '⚡ +12 años' }
-];
-
-const formatEdadDisplay = (meses) => {
-  if (meses === null || meses === undefined || meses === '') return 'Sin edad especificada';
-  const m = Number(meses);
-  if (m === 0) return '⭐ Todas las edades (0+)';
-  if (m < 12) return `🍼 +${m} meses`;
-  const anos = m / 12;
-  if (Number.isInteger(anos)) return `🧒 +${anos} años (${m} meses)`;
-  return `🧒 +${anos.toFixed(1)} años (${m} meses)`;
-};
 
 const formatEdadBadge = (meses) => {
   if (meses === null || meses === undefined || meses === '') return '';
   const m = Number(meses);
-  if (m === 0) return '⭐ 0+';
+  if (m === 0) return '0+';
   if (m < 12) return `+${m}m`;
   const anos = m / 12;
   if (Number.isInteger(anos)) return `+${anos} años`;
@@ -68,7 +39,6 @@ export default function ProductosPage() {
   const [categorias, setCategorias] = useState([]);
   const [marcas, setMarcas] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState('blister'); // 'blister' | 'table'
 
   // Filters & Pagination
   const [q, setQ] = useState('');
@@ -79,10 +49,19 @@ export default function ProductosPage() {
   const [totalRecords, setTotalRecords] = useState(0);
 
   const estadoOptions = [
-    { value: '', label: 'Todos los estados', shortLabel: 'Todos', color: 'var(--toy-muted)' },
+    { value: '', label: 'Todos los estados', shortLabel: 'Estados', color: 'var(--toy-muted)' },
     { value: '1', label: 'Solo Activos', shortLabel: 'Activos', color: 'var(--toy-blue)' },
     { value: '0', label: 'Solo Inactivos', shortLabel: 'Inactivos', color: 'var(--toy-red)' }
   ];
+
+  const categoriaOptions = useMemo(() => [
+    { value: '', label: 'Todas las categorías', shortLabel: 'Categorías', color: 'var(--toy-muted)' },
+    ...categorias.map((c) => ({
+      value: String(c.id_categoria),
+      label: c.nombre,
+      shortLabel: c.nombre
+    }))
+  ], [categorias]);
 
   // Modal Create / Edit Producto
   const [modalOpen, setModalOpen] = useState(false);
@@ -125,9 +104,8 @@ export default function ProductosPage() {
     10000: ''
   });
 
-  // Automatic Pricing Engine State
-  const [estrategiaPrecio, setEstrategiaPrecio] = useState('estandar');
-  const [autoCalcularActivo, setAutoCalcularActivo] = useState(true);
+  // Single Price State
+  const [precioVenta, setPrecioVenta] = useState('');
 
   // Modals for Quick Add Category & Brand
   const [quickCatOpen, setQuickCatOpen] = useState(false);
@@ -275,8 +253,7 @@ export default function ProductosPage() {
       initialEscalas[c] = '';
     });
     setEscalasState(initialEscalas);
-    setEstrategiaPrecio('estandar');
-    setAutoCalcularActivo(true);
+    setPrecioVenta('');
     setFormErrors({});
     setModalOpen(true);
 
@@ -285,42 +262,31 @@ export default function ProductosPage() {
     }
   };
 
-  // Handler for Level 1 base price changes (triggers auto-calculation)
-  const handleNivel1Change = (val) => {
-    if (autoCalcularActivo && val && parseFloat(val) > 0) {
-      const calculadas = calcularEscalasAutomaticas(val, estrategiaPrecio);
+  // Handler para cambio en el precio único de venta (autocalcula escalas en segundo plano)
+  const handlePrecioChange = (val) => {
+    let cleaned = val.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 1) {
+      // Limitar estrictamente a máximo 2 dígitos decimales (centavos)
+      cleaned = parts[0] + '.' + parts.slice(1).join('').slice(0, 2);
+    }
+    setPrecioVenta(cleaned);
+    if (formErrors.precio) {
+      setFormErrors((prev) => ({ ...prev, precio: undefined }));
+    }
+
+    const p = parseFloat(cleaned);
+    if (!isNaN(p) && p > 0) {
+      const calculadas = calcularEscalasAutomaticas(p, 'estandar');
       if (calculadas) {
         setEscalasState(calculadas);
-        return;
       }
-    }
-    setEscalasState((prev) => ({ ...prev, 1: val }));
-  };
-
-  // Switch commercial margin strategy
-  const handleCambiarEstrategia = (estrategiaKey) => {
-    setEstrategiaPrecio(estrategiaKey);
-    const p1 = escalasState[1];
-    if (p1 && parseFloat(p1) > 0) {
-      const calculadas = calcularEscalasAutomaticas(p1, estrategiaKey);
-      if (calculadas) {
-        setEscalasState(calculadas);
-        toast.info(`Escalas actualizadas: ${ESTRATEGIAS_PRECIO[estrategiaKey].nombre}`);
-      }
-    }
-  };
-
-  // Manual trigger to recalculate all tiers
-  const handleRecalcularEscalasManual = () => {
-    const p1 = escalasState[1];
-    if (!p1 || parseFloat(p1) <= 0) {
-      toast.warning('Ingresa primero el precio de menudeo (1 ud) para calcular las escalas');
-      return;
-    }
-    const calculadas = calcularEscalasAutomaticas(p1, estrategiaPrecio);
-    if (calculadas) {
-      setEscalasState(calculadas);
-      toast.success('¡Escalas recalculadas automáticamente con éxito!');
+    } else {
+      const emptyTiers = {};
+      NIVELES_CANTIDAD.forEach((c) => {
+        emptyTiers[c] = '';
+      });
+      setEscalasState(emptyTiers);
     }
   };
 
@@ -350,6 +316,7 @@ export default function ProductosPage() {
           setEdadUnidad('anos');
         }
 
+        let baseVal = '';
         const tiersMap = {};
         NIVELES_CANTIDAD.forEach((c) => {
           tiersMap[c] = '';
@@ -357,9 +324,21 @@ export default function ProductosPage() {
         if (Array.isArray(p.escalas)) {
           p.escalas.forEach((esc) => {
             tiersMap[esc.cantidad_minima] = String(esc.precio_unitario);
+            if (esc.cantidad_minima === 1) {
+              baseVal = String(esc.precio_unitario);
+            }
           });
         }
-        setEscalasState(tiersMap);
+        if (!baseVal && prod.precio_menudeo) {
+          baseVal = String(prod.precio_menudeo);
+        }
+        setPrecioVenta(baseVal);
+        if (baseVal && parseFloat(baseVal) > 0) {
+          const calculadas = calcularEscalasAutomaticas(parseFloat(baseVal), 'estandar');
+          setEscalasState(calculadas || tiersMap);
+        } else {
+          setEscalasState(tiersMap);
+        }
         setModalOpen(true);
       }
     } catch (err) {
@@ -367,34 +346,33 @@ export default function ProductosPage() {
     }
   };
 
-  // Client-side validation of price monotonicity
+  // Validación estricta similar al módulo de clientes
   const validateForm = () => {
     const errors = {};
-    if (!formData.nombre.trim()) errors.nombre = 'El nombre es requerido';
-    if (!formData.id_categoria) errors.id_categoria = 'La categoría es requerida';
+    const nombreTrimmed = formData.nombre.trim();
+    if (!nombreTrimmed) {
+      errors.nombre = 'El nombre del producto es obligatorio';
+    } else if (nombreTrimmed.length < 2) {
+      errors.nombre = 'El nombre debe tener al menos 2 caracteres';
+    } else if (/^\d+$/.test(nombreTrimmed)) {
+      errors.nombre = 'El nombre del producto no puede ser únicamente numérico';
+    } else if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/.test(nombreTrimmed)) {
+      errors.nombre = 'El nombre del producto debe contener al menos una letra';
+    }
 
-    // Tier 1 is mandatory
-    const retailPrice = parseFloat(escalasState[1]);
-    if (isNaN(retailPrice) || retailPrice <= 0) {
-      errors.escalas = 'El Nivel 1 (Precio Menudeo) es obligatorio y debe ser mayor a 0.00';
-    } else {
-      let lastPrice = retailPrice;
-      for (const cant of NIVELES_CANTIDAD) {
-        if (cant === 1) continue;
-        const val = escalasState[cant];
-        if (val !== '' && val !== null && val !== undefined) {
-          const currentPrice = parseFloat(val);
-          if (isNaN(currentPrice) || currentPrice <= 0) {
-            errors.escalas = `El precio para escala de ${cant} unidades debe ser mayor a 0.00`;
-            break;
-          }
-          if (currentPrice > lastPrice) {
-            errors.escalas = `El precio de escala (${cant} uds: Q${currentPrice}) no puede ser mayor al precio del nivel anterior (Q${lastPrice})`;
-            break;
-          }
-          lastPrice = currentPrice;
-        }
-      }
+    if (!formData.id_categoria) {
+      errors.id_categoria = 'La categoría es obligatoria';
+    }
+
+    const p = parseFloat(precioVenta);
+    if (!precioVenta || isNaN(p) || p <= 0) {
+      errors.precio = 'El precio de venta es obligatorio y debe ser mayor a 0.00';
+    } else if (!/^\d+(\.\d{1,2})?$/.test(precioVenta)) {
+      errors.precio = 'El precio no puede tener más de 2 dígitos decimales';
+    }
+
+    if (formData.stock_minimo === '' || isNaN(Number(formData.stock_minimo)) || Number(formData.stock_minimo) < 0) {
+      errors.stock_minimo = 'El stock mínimo debe ser un número entero mayor o igual a 0';
     }
 
     setFormErrors(errors);
@@ -408,16 +386,12 @@ export default function ProductosPage() {
 
     setSubmitting(true);
     try {
-      const escalasPayload = [];
-      NIVELES_CANTIDAD.forEach((cant) => {
-        const val = escalasState[cant];
-        if (val !== '' && val !== null && val !== undefined) {
-          escalasPayload.push({
-            cantidad_minima: cant,
-            precio_unitario: parseFloat(val)
-          });
-        }
-      });
+      const p = parseFloat(precioVenta);
+      const calculadas = calcularEscalasAutomaticas(p, 'estandar') || {};
+      const escalasPayload = NIVELES_CANTIDAD.map((cant) => ({
+        cantidad_minima: cant,
+        precio_unitario: parseFloat(calculadas[cant] ?? p)
+      }));
 
       const payload = {
         nombre: formData.nombre.trim(),
@@ -432,10 +406,10 @@ export default function ProductosPage() {
       if (modalMode === 'create') {
         payload.codigo_sku = formData.codigo_sku.trim().toUpperCase();
         await api.post('/productos', payload);
-        toast.success(`Producto ${payload.codigo_sku} creado con escalas exitosamente`);
+        toast.success(`Producto ${payload.codigo_sku} creado exitosamente`);
       } else {
         await api.put(`/productos/${selectedProducto.id_producto}`, payload);
-        toast.success('Producto y escalas actualizados exitosamente');
+        toast.success('Producto actualizado exitosamente');
       }
 
       setModalOpen(false);
@@ -534,6 +508,7 @@ export default function ProductosPage() {
     {
       header: 'SKU / Código',
       key: 'codigo_sku',
+      width: '125px',
       render: (row) => <code>{row.codigo_sku}</code>
     },
     {
@@ -554,8 +529,9 @@ export default function ProductosPage() {
       )
     },
     {
-      header: 'Precio Menudeo (Nivel 1)',
+      header: 'Precio (Q)',
       key: 'precio_menudeo',
+      width: '120px',
       render: (row) => (
         <span style={{ fontWeight: 800, color: 'var(--toy-deep-blue)' }}>
           Q{Number(row.precio_menudeo ?? 0).toFixed(2)}
@@ -565,6 +541,7 @@ export default function ProductosPage() {
     {
       header: 'Stock Actual',
       key: 'stock_actual',
+      width: '135px',
       render: (row) => {
         const isLow = Number(row.stock_actual ?? 0) <= Number(row.stock_minimo ?? 0);
         return (
@@ -588,11 +565,13 @@ export default function ProductosPage() {
     {
       header: 'Stock Mínimo',
       key: 'stock_minimo',
+      width: '110px',
       render: (row) => <span style={{ fontWeight: 700 }}>{row.stock_minimo}</span>
     },
     {
       header: 'Estado',
       key: 'activo',
+      width: '110px',
       render: (row) => (
         <span className={`badge ${row.activo ? 'badge-success' : 'badge-danger'}`}>
           {row.activo ? 'Activo' : 'Inactivo'}
@@ -605,6 +584,7 @@ export default function ProductosPage() {
     columns.push({
       header: 'Acciones',
       key: 'acciones',
+      width: '120px',
       render: (row) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
           <button
@@ -639,7 +619,23 @@ export default function ProductosPage() {
                 setQ(e.target.value);
                 setPage(1);
               }}
+              placeholder=""
               ariaLabel="Buscar juguetes"
+            />
+
+            <FilterDropdown
+              options={categoriaOptions}
+              value={filterCategoria}
+              onChange={(val) => {
+                setFilterCategoria(val);
+                setPage(1);
+              }}
+              title="Filtrar por categoría"
+              buttonTitle="Categorías"
+              searchable={true}
+              searchPlaceholder="Buscar categoría..."
+              maxWidth="180px"
+              minWidth="220px"
             />
 
             <FilterDropdown
@@ -650,53 +646,8 @@ export default function ProductosPage() {
               }}
               options={estadoOptions}
               title="Filtrar por estado"
+              maxWidth="160px"
             />
-
-            {/* View Mode Switcher */}
-            <div
-              style={{
-                backgroundColor: 'rgba(255, 244, 221, 0.85)',
-                padding: '0.25rem',
-                borderRadius: '999px',
-                border: '2px solid var(--toy-border)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.25rem'
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setViewMode('blister')}
-                className={viewMode === 'blister' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
-                style={{
-                  borderRadius: '999px',
-                  height: '34px',
-                  padding: '0 0.85rem',
-                  fontSize: '0.78rem',
-                  border: 'none',
-                  boxShadow: viewMode === 'blister' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
-                }}
-              >
-                <Boxes size={14} strokeWidth={2.4} />
-                <span>Blister</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={viewMode === 'table' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
-                style={{
-                  borderRadius: '999px',
-                  height: '34px',
-                  padding: '0 0.85rem',
-                  fontSize: '0.78rem',
-                  border: 'none',
-                  boxShadow: viewMode === 'table' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
-                }}
-              >
-                <List size={14} strokeWidth={2.4} />
-                <span>Tabla</span>
-              </button>
-            </div>
 
             <PermissionGate permission="productos.gestionar">
               <button
@@ -722,268 +673,21 @@ export default function ProductosPage() {
           </>
         }
       >
-        {/* Category Chips Bar */}
-        <div
-          style={{
-            padding: '0.85rem 1.25rem',
-            borderBottom: '1.5px solid var(--toy-border-light)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            flexWrap: 'wrap',
-            backgroundColor: 'rgba(255, 244, 221, 0.25)'
+
+        {/* Main Content: Data Table */}
+        <DataTable
+          columns={columns}
+          data={productos}
+          loading={loading}
+          emptyMessage="No se encontraron productos en el catálogo"
+          pagination={{
+            page,
+            totalPages,
+            totalRecords
           }}
-        >
-          <button
-            type="button"
-            onClick={() => { setFilterCategoria(''); setPage(1); }}
-            style={{
-              padding: '0.35rem 0.85rem',
-              borderRadius: '999px',
-              fontSize: '0.76rem',
-              fontWeight: 800,
-              border: '2px solid',
-              cursor: 'pointer',
-              backgroundColor: filterCategoria === '' ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.7)',
-              color: filterCategoria === '' ? '#FFFFFF' : 'var(--toy-ink)',
-              borderColor: filterCategoria === '' ? 'var(--toy-deep-blue)' : 'var(--toy-border)',
-              boxShadow: filterCategoria === '' ? '0 2px 6px rgba(25, 168, 232, 0.35)' : 'none',
-              transition: 'all 0.12s ease'
-            }}
-          >
-            Todas las Categorías
-          </button>
-          {categorias.map((c) => {
-            const isActive = String(filterCategoria) === String(c.id_categoria);
-            return (
-              <button
-                key={c.id_categoria}
-                type="button"
-                onClick={() => { setFilterCategoria(c.id_categoria); setPage(1); }}
-                style={{
-                  padding: '0.35rem 0.85rem',
-                  borderRadius: '999px',
-                  fontSize: '0.76rem',
-                  fontWeight: 800,
-                  border: '2px solid',
-                  cursor: 'pointer',
-                  backgroundColor: isActive ? 'var(--toy-blue)' : 'rgba(255, 244, 221, 0.7)',
-                  color: isActive ? '#FFFFFF' : 'var(--toy-ink)',
-                  borderColor: isActive ? 'var(--toy-deep-blue)' : 'var(--toy-border)',
-                  boxShadow: isActive ? '0 2px 6px rgba(25, 168, 232, 0.35)' : 'none',
-                  transition: 'all 0.12s ease'
-                }}
-              >
-                {c.nombre}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Main Content: Blister Cards or Data Table */}
-        {viewMode === 'blister' ? (
-          <div style={{ padding: '1.25rem' }}>
-            {loading ? (
-              <div className="empty-state" style={{ padding: '3.5rem' }}>
-                <span style={{ fontWeight: 800, color: 'var(--toy-muted)' }}>Cargando catálogo de juguetes...</span>
-              </div>
-            ) : productos.length === 0 ? (
-              <div className="empty-state" style={{ padding: '3.5rem', textAlign: 'center' }}>
-                <Package size={44} color="var(--toy-muted)" style={{ margin: '0 auto 0.85rem', display: 'block' }} />
-                <h3 className="font-display" style={{ fontSize: '1.25rem', color: 'var(--toy-ink)', margin: 0 }}>No se encontraron juguetes</h3>
-                <p style={{ color: 'var(--toy-muted)', fontSize: '0.88rem', fontWeight: 600, margin: '0.35rem 0 0' }}>Prueba con otro término de búsqueda o categoría.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '1.8rem' }}>
-                {productos.map((p, idx) => {
-                  const isLowStock = Number(p.stock_actual ?? 0) <= Number(p.stock_minimo ?? 0);
-                  const checkerClass = idx % 3 === 0 ? 'bg-checker-blue' : idx % 3 === 1 ? 'bg-checker-gold' : 'bg-checker-purple';
-
-                  return (
-                    <div
-                      key={p.id_producto}
-                      className="toy-cardboard-pack"
-                      style={{
-                        backgroundColor: '#FFFFFF',
-                        border: '2px solid var(--toy-border)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between'
-                      }}
-                    >
-                      {/* Packaging Header Strip with Euro Hanger */}
-                      <div className={checkerClass} style={{ padding: '0.85rem 1rem 0.75rem', textAlign: 'center', opacity: p.activo ? 1 : 0.65 }}>
-                        <div className="euro-hanger-punch" style={{ marginBottom: '0.45rem' }} />
-                        <h3
-                          className="toy-card-title"
-                          style={{
-                            fontSize: '0.92rem',
-                            textOverflow: 'ellipsis',
-                            overflow: 'hidden',
-                            whiteSpace: 'nowrap',
-                            margin: 0
-                          }}
-                        >
-                          {p.nombre}
-                        </h3>
-                      </div>
-
-                      {/* Molded Toy Blister Capsule Frame */}
-                      <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                        <div
-                          className="toy-bubble-frame"
-                          style={{
-                            padding: '1.25rem 0.85rem',
-                            textAlign: 'center',
-                            marginBottom: '0.85rem',
-                            backgroundColor: 'rgba(255, 244, 221, 0.45)',
-                            minHeight: '130px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.5rem'
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: '54px',
-                              height: '54px',
-                              borderRadius: '18px',
-                              background: 'linear-gradient(135deg, var(--toy-blue), var(--toy-deep-blue))',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#FFFFFF',
-                              boxShadow: '0 4px 12px rgba(8, 123, 181, 0.28)'
-                            }}
-                          >
-                            <Package size={28} strokeWidth={2.4} />
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                            <code>{p.codigo_sku}</code>
-                            <span className="badge badge-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.55rem' }}>
-                              {p.categoria || 'Juguete'}
-                            </span>
-                            {p.edad_minima_meses !== null && p.edad_minima_meses !== undefined && (
-                              <span
-                                className="badge"
-                                style={{
-                                  fontSize: '0.68rem',
-                                  padding: '0.15rem 0.55rem',
-                                  backgroundColor: 'rgba(255, 179, 0, 0.22)',
-                                  color: '#b45309',
-                                  border: '1px solid rgba(255, 179, 0, 0.45)',
-                                  fontWeight: 700
-                                }}
-                              >
-                                {formatEdadBadge(p.edad_minima_meses)}
-                              </span>
-                            )}
-                          </div>
-
-                          {p.marca && (
-                            <span style={{ fontSize: '0.72rem', color: 'var(--toy-muted)', fontWeight: 700 }}>
-                              Marca: {p.marca}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Package Footer: Collector Price & Stock */}
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
-                            <div>
-                              <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: 'var(--toy-muted)', fontWeight: 800, display: 'block' }}>
-                                Precio Menudeo (1 ud)
-                              </span>
-                              <span className="font-display" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
-                                Q{Number(p.precio_menudeo ?? 0).toFixed(2)}
-                              </span>
-                            </div>
-
-                            <div style={{ textAlign: 'right' }}>
-                              <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: 'var(--toy-muted)', fontWeight: 800, display: 'block' }}>
-                                Stock
-                              </span>
-                              <span
-                                className={`badge ${isLowStock ? 'badge-danger' : 'badge-success'}`}
-                                style={{ fontSize: '0.72rem' }}
-                              >
-                                {p.stock_actual ?? 0} uds
-                              </span>
-                            </div>
-                          </div>
-
-                          {canManageProductos && (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.65rem', borderTop: '1.5px solid var(--toy-border)' }}>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-icon"
-                                onClick={() => handleOpenEdit(p)}
-                                title="Editar producto y escalas"
-                                aria-label="Editar producto y escalas"
-                              >
-                                <Pencil size={15} strokeWidth={2.2} />
-                              </button>
-                              <ToySwitch
-                                checked={p.activo}
-                                onChange={() => handleToggleEstado(p)}
-                                title={p.activo ? 'Inactivar producto' : 'Activar producto'}
-                                ariaLabel={p.activo ? 'Inactivar producto' : 'Activar producto'}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Blister View Pagination */}
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.85rem 0.5rem', borderTop: '1.5px solid var(--toy-border-light)' }}>
-                <span style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--toy-muted)' }}>
-                  Página {page} de {totalPages} ({totalRecords} juguetes en total)
-                </span>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    disabled={page <= 1 || loading}
-                    onClick={() => setPage(page - 1)}
-                  >
-                    Anterior
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    disabled={page >= totalPages || loading}
-                    onClick={() => setPage(page + 1)}
-                  >
-                    Siguiente
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <DataTable
-            columns={columns}
-            data={productos}
-            loading={loading}
-            emptyMessage="No se encontraron productos en el catálogo"
-            pagination={{
-              page,
-              totalPages,
-              totalRecords
-            }}
-            onPageChange={(newPage) => setPage(newPage)}
-            embedded
-          />
-        )}
+          onPageChange={(newPage) => setPage(newPage)}
+          embedded
+        />
       </PageCard>
 
       {/* Modal Crear / Editar Producto */}
@@ -991,7 +695,7 @@ export default function ProductosPage() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         size="lg"
-        title={modalMode === 'create' ? 'Registrar Producto y Escalas' : `Editar Producto: ${formData.codigo_sku}`}
+        title={modalMode === 'create' ? 'Registrar Producto' : `Editar Producto: ${formData.codigo_sku}`}
         footer={
           <>
             <button
@@ -1014,33 +718,18 @@ export default function ProductosPage() {
         }
       >
         <form onSubmit={handleFormSubmit}>
-          {modalMode === 'create' && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '1rem',
-                padding: '0.65rem 0.95rem',
-                backgroundColor: 'rgba(25, 168, 232, 0.08)',
-                borderRadius: '14px',
-                border: '1.5px solid rgba(25, 168, 232, 0.22)'
-              }}
-            >
-              <Sparkles size={16} color="var(--toy-blue)" strokeWidth={2.4} />
-              <span style={{ fontSize: '0.82rem', color: 'var(--toy-ink)', fontWeight: 600 }}>
-                Código SKU autoincremental: <code style={{ fontWeight: 800, color: 'var(--toy-deep-blue)', fontSize: '0.9rem' }}>{formData.codigo_sku || 'Generando...'}</code> <span style={{ color: 'var(--toy-muted)' }}>(asignado automáticamente según categoría, marca y registros existentes)</span>
-              </span>
-            </div>
-          )}
-
           <FormField label="Nombre del Juguete" name="nombre" error={formErrors.nombre} required>
             <input
               type="text"
               id="nombre"
               className={`form-control ${formErrors.nombre ? 'has-error' : ''}`}
               value={formData.nombre}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, nombre: e.target.value });
+                if (formErrors.nombre) {
+                  setFormErrors((prev) => ({ ...prev, nombre: undefined }));
+                }
+              }}
               placeholder="Ej. Set de Bloques Creativos 100 Piezas"
               required
             />
@@ -1119,7 +808,7 @@ export default function ProductosPage() {
                   }
                 }}
               >
-                <option value="">Sin marca específica (Genérica)</option>
+                <option value="">Selecciona una marca (Opcional)</option>
                 {marcas.map((m) => (
                   <option key={m.id_marca} value={m.id_marca}>
                     {m.nombre}
@@ -1129,444 +818,112 @@ export default function ProductosPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginTop: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+            <FormField label="Precio de Venta (Q)" name="precio" error={formErrors.precio} required>
+              <input
+                type="text"
+                inputMode="decimal"
+                id="precio_unitario"
+                className={`form-control ${formErrors.precio ? 'has-error' : ''}`}
+                value={precioVenta}
+                onChange={(e) => handlePrecioChange(e.target.value)}
+                onBlur={() => {
+                  if (precioVenta && !isNaN(parseFloat(precioVenta))) {
+                    handlePrecioChange(parseFloat(precioVenta).toFixed(2));
+                  }
+                }}
+                placeholder="0.00"
+                required
+              />
+            </FormField>
+
             <FormField label="Stock Mínimo (Alerta de Bodega)" name="stock_minimo" error={formErrors.stock_minimo} required>
               <input
                 type="number"
                 min="0"
                 id="stock_minimo"
-                className="form-control"
-                style={{ maxWidth: '240px' }}
+                className={`form-control ${formErrors.stock_minimo ? 'has-error' : ''}`}
                 value={formData.stock_minimo}
-                onChange={(e) => setFormData({ ...formData, stock_minimo: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setFormData({ ...formData, stock_minimo: val });
+                  if (formErrors.stock_minimo) {
+                    setFormErrors((prev) => ({ ...prev, stock_minimo: undefined }));
+                  }
+                }}
+                placeholder="Ej. 5"
                 required
               />
             </FormField>
           </div>
 
-          {/* Configuración Intuitiva de Edad Recomendada */}
-          <div
-            style={{
-              marginTop: '1rem',
-              padding: '1.15rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.85)',
-              borderRadius: '16px',
-              border: '2px solid var(--toy-border-light)'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <label className="form-label" style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'var(--toy-ink)' }}>
-                  Edad Recomendada
-                </label>
+          <div style={{ marginTop: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+              <label className="form-label" style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem' }}>
+                Edad Recomendada
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
                 <span
                   style={{
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    padding: '0.15rem 0.65rem',
-                    borderRadius: '999px',
-                    backgroundColor: 'rgba(25, 168, 232, 0.12)',
-                    color: 'var(--toy-deep-blue)',
-                    border: '1px solid rgba(25, 168, 232, 0.25)'
+                    fontSize: '0.8rem',
+                    fontWeight: edadUnidad === 'anos' ? 700 : 500,
+                    color: edadUnidad === 'anos' ? 'var(--toy-ink)' : 'var(--toy-muted)'
                   }}
                 >
-                  {formatEdadDisplay(formData.edad_minima_meses)}
+                  Años
                 </span>
-              </div>
-
-              {/* Selector Años / Meses */}
-              <div
-                style={{
-                  display: 'inline-flex',
-                  padding: '3px',
-                  backgroundColor: 'var(--toy-bg)',
-                  borderRadius: '999px',
-                  border: '1.5px solid var(--toy-border)'
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setEdadUnidad('anos')}
+                <ToySwitch
+                  checked={edadUnidad === 'meses'}
+                  onChange={() => setEdadUnidad(edadUnidad === 'anos' ? 'meses' : 'anos')}
+                  title="Cambiar entre Años y Meses"
+                  ariaLabel="Cambiar entre Años y Meses"
+                />
+                <span
                   style={{
-                    border: 'none',
-                    borderRadius: '999px',
-                    padding: '0.22rem 0.75rem',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    backgroundColor: edadUnidad === 'anos' ? 'var(--toy-blue)' : 'transparent',
-                    color: edadUnidad === 'anos' ? '#FFFFFF' : 'var(--toy-muted)',
-                    boxShadow: edadUnidad === 'anos' ? '0 2px 4px rgba(25, 168, 232, 0.3)' : 'none',
-                    transition: 'all 0.15s ease'
+                    fontSize: '0.8rem',
+                    fontWeight: edadUnidad === 'meses' ? 700 : 500,
+                    color: edadUnidad === 'meses' ? 'var(--toy-ink)' : 'var(--toy-muted)'
                   }}
                 >
-                  🧒 En Años
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEdadUnidad('meses')}
-                  style={{
-                    border: 'none',
-                    borderRadius: '999px',
-                    padding: '0.22rem 0.75rem',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    backgroundColor: edadUnidad === 'meses' ? 'var(--toy-blue)' : 'transparent',
-                    color: edadUnidad === 'meses' ? '#FFFFFF' : 'var(--toy-muted)',
-                    boxShadow: edadUnidad === 'meses' ? '0 2px 4px rgba(25, 168, 232, 0.3)' : 'none',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  👶 En Meses
-                </button>
+                  Meses
+                </span>
               </div>
             </div>
 
-            {/* Input interactivo numérico */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', maxWidth: '220px' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  style={{ width: '34px', height: '36px', padding: 0, fontWeight: 800, fontSize: '1.1rem' }}
-                  onClick={() => {
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                type="number"
+                id="edad_minima_meses"
+                min="0"
+                className="form-control"
+                style={{ maxWidth: '180px' }}
+                value={
+                  edadUnidad === 'anos'
+                    ? (formData.edad_minima_meses !== '' && formData.edad_minima_meses !== null
+                        ? Math.round(Number(formData.edad_minima_meses) / 12)
+                        : '')
+                    : (formData.edad_minima_meses !== '' && formData.edad_minima_meses !== null
+                        ? formData.edad_minima_meses
+                        : '')
+                }
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val === '') {
+                    setFormData((prev) => ({ ...prev, edad_minima_meses: '' }));
+                  } else {
+                    const num = Math.max(0, parseInt(val, 10) || 0);
                     if (edadUnidad === 'anos') {
-                      const currentAnos = Math.max(0, Math.floor((Number(formData.edad_minima_meses) || 0) / 12) - 1);
-                      setEdadMinimaDesdeAnos(currentAnos);
+                      setEdadMinimaDesdeAnos(num);
                     } else {
-                      const currentMeses = Math.max(0, (Number(formData.edad_minima_meses) || 0) - 6);
-                      setEdadMinimaDesdeMeses(currentMeses);
+                      setEdadMinimaDesdeMeses(num);
                     }
-                  }}
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  className="form-control"
-                  style={{ textAlign: 'center', fontWeight: 800, height: '36px', fontSize: '0.95rem' }}
-                  value={
-                    edadUnidad === 'anos'
-                      ? (formData.edad_minima_meses !== '' && formData.edad_minima_meses !== null ? Math.round(Number(formData.edad_minima_meses) / 12) : '')
-                      : (formData.edad_minima_meses !== '' && formData.edad_minima_meses !== null ? formData.edad_minima_meses : '')
                   }
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '') {
-                      setFormData((prev) => ({ ...prev, edad_minima_meses: '' }));
-                    } else {
-                      const num = Math.max(0, parseInt(val, 10) || 0);
-                      if (edadUnidad === 'anos') {
-                        setEdadMinimaDesdeAnos(num);
-                      } else {
-                        setEdadMinimaDesdeMeses(num);
-                      }
-                    }
-                  }}
-                  placeholder={edadUnidad === 'anos' ? 'Ej. 3' : 'Ej. 36'}
-                />
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  style={{ width: '34px', height: '36px', padding: 0, fontWeight: 800, fontSize: '1.1rem' }}
-                  onClick={() => {
-                    if (edadUnidad === 'anos') {
-                      const currentAnos = Math.floor((Number(formData.edad_minima_meses) || 0) / 12) + 1;
-                      setEdadMinimaDesdeAnos(currentAnos);
-                    } else {
-                      const currentMeses = (Number(formData.edad_minima_meses) || 0) + 6;
-                      setEdadMinimaDesdeMeses(currentMeses);
-                    }
-                  }}
-                >
-                  +
-                </button>
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--toy-muted)', minWidth: '42px' }}>
-                  {edadUnidad === 'anos' ? 'años' : 'meses'}
-                </span>
-              </div>
-
-              <div style={{ fontSize: '0.78rem', fontWeight: 600 }}>
-                {Number(formData.edad_minima_meses) >= 36 ? (
-                  <span style={{ color: '#d97706', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <AlertCircle size={14} /> Recomendado para +3 años (Piezas pequeñas)
-                  </span>
-                ) : Number(formData.edad_minima_meses) > 0 ? (
-                  <span style={{ color: 'var(--toy-deep-blue)' }}>👶 Apto para primera infancia</span>
-                ) : (
-                  <span style={{ color: 'var(--toy-muted)' }}>⭐ Sin restricción de edad mínima</span>
-                )}
-              </div>
-            </div>
-
-            {/* Chips de selección rápida */}
-            <div>
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--toy-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
-                Acceso rápido:
-              </span>
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                {EDAD_PRESETS.map((preset) => {
-                  const isSelected = Number(formData.edad_minima_meses) === preset.meses && formData.edad_minima_meses !== '';
-                  return (
-                    <button
-                      key={preset.meses}
-                      type="button"
-                      onClick={() => {
-                        setFormData((prev) => ({ ...prev, edad_minima_meses: preset.meses }));
-                        if (preset.meses % 12 === 0 && preset.meses > 0) {
-                          setEdadUnidad('anos');
-                        } else if (preset.meses < 12 && preset.meses > 0) {
-                          setEdadUnidad('meses');
-                        }
-                      }}
-                      style={{
-                        border: isSelected ? '2px solid var(--toy-blue)' : '1px solid var(--toy-border)',
-                        backgroundColor: isSelected ? 'rgba(25, 168, 232, 0.16)' : '#FFFFFF',
-                        color: isSelected ? 'var(--toy-deep-blue)' : 'var(--toy-ink)',
-                        fontWeight: isSelected ? 800 : 600,
-                        borderRadius: '999px',
-                        padding: '0.22rem 0.65rem',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        boxShadow: isSelected ? '0 2px 6px rgba(25, 168, 232, 0.25)' : 'none',
-                        transform: isSelected ? 'scale(1.04)' : 'none',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {preset.tag}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Escalas de Precios por Cantidad con Sistema Automático */}
-          <div
-            style={{
-              marginTop: '1.5rem',
-              padding: '1.25rem',
-              backgroundColor: 'rgba(255, 244, 221, 0.45)',
-              borderRadius: '20px',
-              border: '2px solid var(--toy-border)'
-            }}
-          >
-            {/* Header del Sistema de Precios */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '999px', backgroundColor: 'var(--toy-blue)', display: 'inline-block' }} />
-                  <h4 className="font-display" style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--toy-ink)', margin: 0 }}>
-                    Escalas de Precio por Volumen (10 Niveles)
-                  </h4>
-                  <span
-                    style={{
-                      fontSize: '0.68rem',
-                      fontWeight: 800,
-                      padding: '0.15rem 0.55rem',
-                      borderRadius: '999px',
-                      backgroundColor: autoCalcularActivo ? 'rgba(25, 168, 232, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-                      color: autoCalcularActivo ? 'var(--toy-deep-blue)' : 'var(--toy-muted)',
-                      border: autoCalcularActivo ? '1px solid rgba(25, 168, 232, 0.35)' : '1px solid rgba(100, 116, 139, 0.25)'
-                    }}
-                  >
-                    {autoCalcularActivo ? '⚡ Auto-Cálculo Activo' : 'Manual'}
-                  </span>
-                </div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 600, marginTop: '2px', marginBottom: 0 }}>
-                  Al ingresar el precio de menudeo (1 ud), el sistema genera automáticamente descuentos decrecientes por mayoreo.
-                </p>
-              </div>
-
-              {/* Botón de recálculo manual */}
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={handleRecalcularEscalasManual}
-                title="Aplica la fórmula matemática a partir del precio de menudeo"
-                style={{ height: '32px', fontSize: '0.76rem' }}
-              >
-                <Sparkles size={13} strokeWidth={2.4} color="var(--toy-deep-blue)" />
-                <span>Recalcular con Fórmula</span>
-              </button>
-            </div>
-
-            {/* Selector de Estrategia Comercial y Toggle */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '0.75rem',
-                padding: '0.75rem 1rem',
-                backgroundColor: '#FFFFFF',
-                borderRadius: '16px',
-                border: '1.5px solid var(--toy-border)',
-                marginBottom: '1rem'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--toy-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Perfil de Margen:
-                </span>
-                {Object.values(ESTRATEGIAS_PRECIO).map((est) => {
-                  const isCurrent = estrategiaPrecio === est.id;
-                  return (
-                    <button
-                      key={est.id}
-                      type="button"
-                      onClick={() => handleCambiarEstrategia(est.id)}
-                      style={{
-                        padding: '0.25rem 0.65rem',
-                        borderRadius: '999px',
-                        fontSize: '0.72rem',
-                        fontWeight: 800,
-                        border: isCurrent ? '1.5px solid var(--toy-deep-blue)' : '1.5px solid var(--toy-border)',
-                        backgroundColor: isCurrent ? 'var(--toy-blue)' : '#FFFDF9',
-                        color: isCurrent ? '#FFFFFF' : 'var(--toy-ink)',
-                        cursor: 'pointer',
-                        transition: 'all 0.12s ease',
-                        boxShadow: isCurrent ? '0 2px 4px rgba(8, 123, 181, 0.25)' : 'none'
-                      }}
-                      title={est.descripcion}
-                    >
-                      {est.nombre}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.76rem', fontWeight: 700, color: 'var(--toy-ink)', cursor: 'pointer', userSelect: 'none' }}>
-                <input
-                  type="checkbox"
-                  checked={autoCalcularActivo}
-                  onChange={(e) => setAutoCalcularActivo(e.target.checked)}
-                  style={{ accentColor: 'var(--toy-blue)', width: '15px', height: '15px' }}
-                />
-                <span>Auto-actualizar al escribir</span>
-              </label>
-            </div>
-
-            {formErrors.escalas && (
-              <div
-                style={{
-                  padding: '0.65rem 0.85rem',
-                  backgroundColor: '#FEF2F2',
-                  border: '1.5px solid var(--toy-red)',
-                  color: '#991B1B',
-                  fontSize: '0.78rem',
-                  borderRadius: '12px',
-                  marginBottom: '1rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontWeight: 700
                 }}
-              >
-                <AlertCircle size={15} strokeWidth={2.4} /> {formErrors.escalas}
-              </div>
-            )}
-
-            {/* 10 Niveles de Cantidad */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
-                gap: '0.65rem'
-              }}
-            >
-              {NIVELES_CANTIDAD.map((cant) => {
-                const meta = NIVELES_METADATA[cant] || { etiqueta: `≥ ${cant} uds`, descripcion: '' };
-                const isBase = cant === 1;
-                const detalle = obtenerDetalleEscala(cant, escalasState[cant], escalasState[1]);
-
-                return (
-                  <div
-                    key={cant}
-                    style={{
-                      padding: '0.65rem 0.75rem',
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '14px',
-                      border: isBase ? '2px solid var(--toy-blue)' : '1.5px solid var(--toy-border)',
-                      boxShadow: isBase ? '0 3px 8px rgba(8, 123, 181, 0.15)' : '0 1px 3px rgba(58, 42, 34, 0.04)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
-                      <span style={{ fontSize: '0.74rem', fontWeight: 800, color: isBase ? 'var(--toy-deep-blue)' : 'var(--toy-ink)' }}>
-                        {meta.etiqueta}
-                      </span>
-                      {!isBase && detalle.porcentajeDescuento > 0 && (
-                        <span
-                          style={{
-                            fontSize: '0.64rem',
-                            fontWeight: 800,
-                            padding: '0.1rem 0.35rem',
-                            borderRadius: '999px',
-                            backgroundColor: 'rgba(25, 168, 232, 0.12)',
-                            color: 'var(--toy-deep-blue)'
-                          }}
-                        >
-                          -{detalle.porcentajeDescuento}%
-                        </span>
-                      )}
-                      {isBase && (
-                        <span
-                          style={{
-                            fontSize: '0.64rem',
-                            fontWeight: 800,
-                            padding: '0.1rem 0.35rem',
-                            borderRadius: '999px',
-                            backgroundColor: 'rgba(25, 168, 232, 0.15)',
-                            color: 'var(--toy-deep-blue)'
-                          }}
-                        >
-                          Base
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--toy-muted)', marginRight: '4px' }}>Q</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        className="form-control"
-                        style={{ padding: '0.3rem 0.45rem', fontSize: '0.82rem', height: '34px' }}
-                        placeholder={isBase ? '0.00' : '0.00'}
-                        value={escalasState[cant] ?? ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (isBase) {
-                            handleNivel1Change(val);
-                          } else {
-                            setEscalasState((prev) => ({ ...prev, [cant]: val }));
-                          }
-                        }}
-                        required={isBase}
-                      />
-                    </div>
-
-                    <div style={{ fontSize: '0.66rem', color: 'var(--toy-muted)', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{meta.descripcion}</span>
-                      {!isBase && detalle.ahorroUnitario > 0 && (
-                        <span style={{ color: 'var(--toy-green)', fontWeight: 700 }}>
-                          -Q{detalle.ahorroUnitario}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                placeholder={edadUnidad === 'anos' ? 'Ej. 3' : 'Ej. 36'}
+              />
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--toy-muted)' }}>
+                {edadUnidad === 'anos' ? 'años' : 'meses'}
+              </span>
             </div>
           </div>
         </form>

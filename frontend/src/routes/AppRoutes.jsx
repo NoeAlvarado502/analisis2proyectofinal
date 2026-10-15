@@ -8,6 +8,9 @@ import UsuariosPage from '../pages/UsuariosPage';
 import RolesPage from '../pages/RolesPage';
 import ClientesPage from '../pages/ClientesPage';
 import ProductosPage from '../pages/ProductosPage';
+import ProveedoresPage from '../pages/ProveedoresPage';
+import ComprasPage from '../pages/ComprasPage';
+import InventarioPage from '../pages/InventarioPage';
 import { useAuth } from '../auth/AuthContext';
 
 export default function AppRoutes() {
@@ -56,6 +59,30 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute requiredPermission="productos.consultar">
               <ProductosPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/proveedores"
+          element={
+            <ProtectedRoute requiredPermission={['proveedores.gestionar', 'compras.registrar']}>
+              <ProveedoresPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/compras"
+          element={
+            <ProtectedRoute requiredPermission={['compras.registrar', 'compras.recibir', 'inventario.consultar']}>
+              <ComprasPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/inventario"
+          element={
+            <ProtectedRoute requiredPermission="inventario.consultar">
+              <InventarioPage />
             </ProtectedRoute>
           }
         />

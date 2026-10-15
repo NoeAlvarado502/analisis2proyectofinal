@@ -35,6 +35,18 @@ const validateEscalasArray = (escalas) => {
   return true;
 };
 
+const productoNombreSchema = z
+  .string({ required_error: 'El nombre es obligatorio' })
+  .trim()
+  .min(2, 'El nombre debe tener al menos 2 caracteres')
+  .max(150, 'El nombre no puede exceder 150 caracteres')
+  .refine(val => !/^\d+$/.test(val), {
+    message: 'El nombre del producto no puede ser únicamente numérico'
+  })
+  .refine(val => /[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/.test(val), {
+    message: 'El nombre del producto debe contener al menos una letra'
+  });
+
 export const createProductoSchema = z.object({
   codigo_sku: z
     .string()
@@ -42,7 +54,7 @@ export const createProductoSchema = z.object({
     .max(50)
     .nullish()
     .transform(val => (val && val.length > 0 ? val.toUpperCase() : undefined)),
-  nombre: z.string().trim().min(2, 'El nombre es obligatorio').max(150),
+  nombre: productoNombreSchema,
   descripcion: z.string().nullish().transform(val => val?.trim() || null),
   id_categoria: z.coerce.number().int().positive('La categoría es obligatoria'),
   id_marca: z.coerce.number().int().positive().nullish().transform(val => val || null),
@@ -63,7 +75,7 @@ export const createProductoSchema = z.object({
 });
 
 export const updateProductoSchema = z.object({
-  nombre: z.string().trim().min(2, 'El nombre es obligatorio').max(150),
+  nombre: productoNombreSchema,
   descripcion: z.string().nullish().transform(val => val?.trim() || null),
   id_categoria: z.coerce.number().int().positive('La categoría es obligatoria'),
   id_marca: z.coerce.number().int().positive().nullish().transform(val => val || null),
