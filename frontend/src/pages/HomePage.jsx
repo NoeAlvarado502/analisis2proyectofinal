@@ -150,7 +150,7 @@ export default function HomePage() {
       {/* Banner 1: Alerta para Supervisor de Pedidos Pendientes de Aprobación */}
       {pedidosPendientes > 0 && can('pedidos.autorizar_descuento') && (
         <div
-          onClick={() => navigate('/pedidos')}
+          onClick={() => navigate('/pedidos', { state: { filterEstado: 'PENDIENTE_APROBACION' } })}
           style={{
             backgroundColor: '#FFFFFF',
             border: '2px solid var(--toy-orange)',
@@ -199,6 +199,10 @@ export default function HomePage() {
           <button
             type="button"
             className="btn btn-warning btn-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/pedidos', { state: { filterEstado: 'PENDIENTE_APROBACION' } });
+            }}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -217,7 +221,7 @@ export default function HomePage() {
       {/* Banner 2: Alerta de Inventario Crítico */}
       {alertasActivas > 0 && (
         <div
-          onClick={() => navigate('/inventario')}
+          onClick={() => navigate('/inventario', { state: { activeTab: 'alertas', filterEstadoAlerta: 'ACTIVA' } })}
           style={{
             backgroundColor: '#FFFFFF',
             border: '2px solid var(--toy-red)',
@@ -266,6 +270,10 @@ export default function HomePage() {
           <button
             type="button"
             className="btn btn-danger btn-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/inventario', { state: { activeTab: 'alertas', filterEstadoAlerta: 'ACTIVA' } });
+            }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}
           >
             <span>Ver Alertas</span>

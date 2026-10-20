@@ -90,4 +90,14 @@ export class ComprasController {
       next(err);
     }
   }
+
+  static async obtenerUltimoCosto(req, res, next) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const ultimoCosto = await ComprasService.obtenerUltimoCosto(id);
+      res.json(successResponse({ ultimo_costo: ultimoCosto }));
+    } catch (err) {
+      next(err);
+    }
+  }
 }

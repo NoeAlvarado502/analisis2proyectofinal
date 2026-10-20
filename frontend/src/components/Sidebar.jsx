@@ -1,7 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  Home,
   Users,
   ShieldCheck,
   UserCheck,
@@ -18,13 +17,6 @@ import {
 import { useAuth } from '../auth/AuthContext';
 
 export const MENU_ITEMS = [
-  {
-    path: '/inicio',
-    label: 'Inicio',
-    IconComponent: Home,
-    permission: null,
-    description: 'Resumen general y accesos rápidos'
-  },
   {
     path: '/pedidos',
     label: 'Pedidos',
@@ -113,7 +105,11 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-header">
+      <NavLink
+        to="/inicio"
+        className={({ isActive }) => `sidebar-header ${isActive ? 'brand-active' : ''}`}
+        title="Inicio - Juguetería Quetzal"
+      >
         <div className="brand-icon">
           <ToyBrick size={26} strokeWidth={2.4} />
         </div>
@@ -122,7 +118,7 @@ export default function Sidebar() {
             JUGUETERÍA QUETZAL
           </span>
         </div>
-      </div>
+      </NavLink>
 
       <nav className="sidebar-nav">
         {permittedItems.map((item) => {

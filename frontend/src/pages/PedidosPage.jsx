@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   FileText,
   FilePlus,
@@ -36,6 +36,7 @@ export default function PedidosPage() {
   const { can, user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const canCreate = can('pedidos.crear');
   const canAuthorize = can('pedidos.autorizar_descuento');
@@ -48,12 +49,20 @@ export default function PedidosPage() {
 
   // Filtros
   const [q, setQ] = useState('');
-  const [filterEstado, setFilterEstado] = useState('');
+  const [filterEstado, setFilterEstado] = useState(() => location.state?.filterEstado || '');
   const [filterFechaDesde, setFilterFechaDesde] = useState('');
   const [filterFechaHasta, setFilterFechaHasta] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  // Sincronizar filtro cuando se navega con estado desde las alertas (Home)
+  useEffect(() => {
+    if (location.state?.filterEstado !== undefined) {
+      setFilterEstado(location.state.filterEstado);
+      setPage(1);
+    }
+  }, [location.state]);
 
   const hoyStr = useMemo(() => {
     const d = new Date();

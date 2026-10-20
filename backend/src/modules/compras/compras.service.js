@@ -291,4 +291,34 @@ export class ComprasService {
 
     return await this.obtenerPorId(id);
   }
+
+  /**
+   * Obtiene el último costo unitario registrado para un producto en compras previas
+   */
+  static async obtenerUltimoCosto(id_producto) {
+    const [rows] = await pool.execute(
+      `SELECT cd.costo_unitario
+       FROM compras_detalle cd
+       JOIN compras c ON c.id_compra = cd.id_compra
+       WHERE cd.id_producto = ? AND c.estado != 'ANULADA'
+       ORDER BY c.id_compra DESC
+       LIMIT 1`,
+      [Number(id_producto)]
+    );
+
+    if (rows.length > 0) {
+      return parseFloat(rows[0].costo_unitario);
+    }
+
+    const [prodRows] = await pool.execute(
+      `SELECT precio_menudeo FROM v_catalogo WHERE id_producto = ? LIMIT 1`,
+      [Number(id_producto)]
+    );
+
+    if (prodRows.length > 0 && prodRows[0].precio_menudeo) {
+      return Math.round(parseFloat(prodRows[0].precio_menudeo) * 0.6 * 100) / 100;
+    }
+
+    return null;
+  }
 }

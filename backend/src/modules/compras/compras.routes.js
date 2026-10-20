@@ -21,6 +21,12 @@ comprasRouter.get(
 );
 
 comprasRouter.get(
+  '/ultimo-costo/:id',
+  requirePermission('compras.registrar', 'inventario.consultar'),
+  ComprasController.obtenerUltimoCosto
+);
+
+comprasRouter.get(
   '/:id',
   requirePermission('compras.registrar', 'compras.recibir', 'inventario.consultar'),
   ComprasController.obtenerPorId

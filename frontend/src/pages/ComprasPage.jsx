@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   PackagePlus,
   Pencil,
@@ -24,6 +25,7 @@ import PageCard from '../components/PageCard';
 export default function ComprasPage() {
   const { can } = useAuth();
   const toast = useToast();
+  const location = useLocation();
 
   const canRegisterCompras = can('compras.registrar');
   const canReceiveCompras = can('compras.recibir');
@@ -135,13 +137,11 @@ export default function ComprasPage() {
     fetchAuxiliares();
   }, [fetchAuxiliares]);
 
-  // Abrir modal de creación
-  const handleOpenCreate = async () => {
+  // Abrir modal de creación (con soporte para prellenado desde Alertas de Inventario)
+  const handleOpenCreate = async (prefillItem = null) => {
     setModalMode('create');
     setEditingCompraId(null);
-    setDetallesList([]);
     setFormErrors({});
-    setItemInput({ id_producto: '', cantidad: 1, costo_unitario: '' });
 
     let comprobanteSugerido = '';
     try {
@@ -153,15 +153,77 @@ export default function ComprasPage() {
       console.warn('No se pudo obtener correlativo sugerido:', err);
     }
 
+    // Proveedor inicial
+    let provId = proveedoresActivos[0]?.id_proveedor ? String(proveedoresActivos[0].id_proveedor) : '';
+    if (!provId) {
+      try {
+        const provRes = await api.get('/proveedores', { params: { activo: '1', limit: 10 } });
+        if (provRes?.data?.length > 0) {
+          provId = String(provRes.data[0].id_proveedor);
+        }
+      } catch (e) {}
+    }
+
     setFormData({
       numero_comprobante: comprobanteSugerido,
-      id_proveedor: proveedoresActivos[0]?.id_proveedor ? String(proveedoresActivos[0].id_proveedor) : '',
-      observaciones: '',
+      id_proveedor: provId,
+      observaciones: prefillItem ? `Abastecimiento de stock por alerta crítica (${prefillItem.producto_nombre})` : '',
       recibir_inmediatamente: false
     });
 
+    if (prefillItem) {
+      let costoSug = '';
+      try {
+        const costRes = await api.get(`/compras/ultimo-costo/${prefillItem.id_producto}`);
+        if (costRes?.data?.ultimo_costo) {
+          costoSug = String(costRes.data.ultimo_costo);
+        }
+      } catch (e) {}
+
+      // Si no hay costo previo de compras, estimar desde precio_menudeo
+      if (!costoSug) {
+        const prod = productosActivos.find((p) => p.id_producto === prefillItem.id_producto);
+        if (prod?.precio_menudeo) {
+          costoSug = String((parseFloat(prod.precio_menudeo) * 0.6).toFixed(2));
+        }
+      }
+
+      setItemInput({
+        id_producto: String(prefillItem.id_producto),
+        cantidad: prefillItem.cantidad,
+        costo_unitario: costoSug || ''
+      });
+
+      // Si tenemos costo sugerido válido, precargar de una vez en el detalle de la compra
+      if (costoSug && parseFloat(costoSug) > 0) {
+        setDetallesList([
+          {
+            id_producto: prefillItem.id_producto,
+            codigo_sku: prefillItem.codigo_sku,
+            producto_nombre: prefillItem.producto_nombre,
+            cantidad: prefillItem.cantidad,
+            costo_unitario: parseFloat(costoSug)
+          }
+        ]);
+      } else {
+        setDetallesList([]);
+      }
+    } else {
+      setDetallesList([]);
+      setItemInput({ id_producto: '', cantidad: 1, costo_unitario: '' });
+    }
+
     setFormModalOpen(true);
   };
+
+  // Detectar navegación desde alerta de abastecimiento (Inventario -> Compras)
+  useEffect(() => {
+    if (location.state?.abastecerItem) {
+      handleOpenCreate(location.state.abastecerItem);
+      // Limpiar el estado de navegación en el historial para evitar reapertura accidental
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Abrir modal de edición
   const handleOpenEdit = async (compra) => {

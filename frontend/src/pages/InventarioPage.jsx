@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Boxes,
   ClipboardList,
@@ -37,12 +37,13 @@ export default function InventarioPage() {
   const { can } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const canAjustar = can('inventario.ajustar');
   const canManageProductos = can('productos.gestionar');
 
   // Sección activa ('existencias' | 'kardex' | 'alertas')
-  const [activeTab, setActiveTab] = useState('existencias');
+  const [activeTab, setActiveTab] = useState(() => location.state?.activeTab || 'existencias');
 
   // Catálogos auxiliares
   const [categorias, setCategorias] = useState([]);
@@ -55,10 +56,24 @@ export default function InventarioPage() {
   const [loadingExistencias, setLoadingExistencias] = useState(false);
   const [qExistencias, setQExistencias] = useState('');
   const [filterCategoria, setFilterCategoria] = useState('');
-  const [filterStock, setFilterStock] = useState('');
+  const [filterStock, setFilterStock] = useState(() => location.state?.filterStock || '');
   const [pageExistencias, setPageExistencias] = useState(1);
   const [totalPagesExistencias, setTotalPagesExistencias] = useState(1);
   const [totalRecordsExistencias, setTotalRecordsExistencias] = useState(0);
+
+  // Sincronizar filtros/pestaña cuando se navega con estado desde las alertas (Home)
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+    if (location.state?.filterEstadoAlerta !== undefined) {
+      setFilterEstadoAlerta(location.state.filterEstadoAlerta);
+    }
+    if (location.state?.filterStock !== undefined) {
+      setFilterStock(location.state.filterStock);
+      setPageExistencias(1);
+    }
+  }, [location.state]);
 
   // Modal Configurar Stock Mínimo
   const [modalMinimoOpen, setModalMinimoOpen] = useState(false);
@@ -96,7 +111,7 @@ export default function InventarioPage() {
   const [alertas, setAlertas] = useState([]);
   const [loadingAlertas, setLoadingAlertas] = useState(false);
   const [qAlertas, setQAlertas] = useState('');
-  const [filterEstadoAlerta, setFilterEstadoAlerta] = useState(''); // '' (todas) | 'ACTIVA' | 'ATENDIDA'
+  const [filterEstadoAlerta, setFilterEstadoAlerta] = useState(() => location.state?.filterEstadoAlerta || ''); // '' (todas) | 'ACTIVA' | 'ATENDIDA'
   const [totalAlertasActivas, setTotalAlertasActivas] = useState(0);
 
   // Cargar catálogos auxiliares
@@ -839,8 +854,20 @@ export default function InventarioPage() {
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              onClick={() => navigate('/compras')}
-              title="Ir al módulo de compras para generar orden de abastecimiento"
+              onClick={() => {
+                const deficit = Math.max(1, Number(row.stock_minimo) - Number(row.stock_actual));
+                navigate('/compras', {
+                  state: {
+                    abastecerItem: {
+                      id_producto: row.id_producto,
+                      codigo_sku: row.codigo_sku,
+                      producto_nombre: row.producto,
+                      cantidad: deficit
+                    }
+                  }
+                });
+              }}
+              title="Ir a compras con datos precargados para abastecer stock"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', height: '32px', fontSize: '0.78rem', padding: '0 0.75rem' }}
             >
               <ShoppingBag size={13} strokeWidth={2.4} />
@@ -884,68 +911,6 @@ export default function InventarioPage() {
               placeholder=""
               ariaLabel="Buscar en inventario"
             />
-
-            {/* Switcher de Pestañas estilo Píldora idéntico a ProductosPage */}
-            <div
-              style={{
-                backgroundColor: 'rgba(255, 244, 221, 0.85)',
-                padding: '0.25rem',
-                borderRadius: '999px',
-                border: '2px solid var(--toy-border)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.25rem'
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveTab('existencias')}
-                className={activeTab === 'existencias' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
-                style={{
-                  borderRadius: '999px',
-                  height: '34px',
-                  padding: '0 0.85rem',
-                  fontSize: '0.78rem',
-                  border: 'none',
-                  boxShadow: activeTab === 'existencias' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
-                }}
-              >
-                <Boxes size={14} strokeWidth={2.4} />
-                <span>Existencias</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('kardex')}
-                className={activeTab === 'kardex' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
-                style={{
-                  borderRadius: '999px',
-                  height: '34px',
-                  padding: '0 0.85rem',
-                  fontSize: '0.78rem',
-                  border: 'none',
-                  boxShadow: activeTab === 'kardex' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
-                }}
-              >
-                <ClipboardList size={14} strokeWidth={2.4} />
-                <span>Kardex</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('alertas')}
-                className={activeTab === 'alertas' ? 'btn-danger btn-sm' : 'btn-ghost btn-sm'}
-                style={{
-                  borderRadius: '999px',
-                  height: '34px',
-                  padding: '0 0.85rem',
-                  fontSize: '0.78rem',
-                  border: 'none',
-                  boxShadow: activeTab === 'alertas' ? '0 2px 0 var(--toy-red-dark)' : 'none'
-                }}
-              >
-                <AlertTriangle size={14} strokeWidth={2.4} />
-                <span>Alertas {totalAlertasActivas > 0 ? `(${totalAlertasActivas})` : ''}</span>
-              </button>
-            </div>
 
             {/* Filtros dinámicos según pestaña activa */}
             {activeTab === 'existencias' && (
@@ -1007,6 +972,68 @@ export default function InventarioPage() {
                 minWidth="170px"
               />
             )}
+
+            {/* Switcher de Pestañas estilo Píldora (fijo a la izquierda de Registrar Movimiento) */}
+            <div
+              style={{
+                backgroundColor: 'rgba(255, 244, 221, 0.85)',
+                padding: '0.25rem',
+                borderRadius: '999px',
+                border: '2px solid var(--toy-border)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setActiveTab('existencias')}
+                className={activeTab === 'existencias' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+                style={{
+                  borderRadius: '999px',
+                  height: '34px',
+                  padding: '0 0.85rem',
+                  fontSize: '0.78rem',
+                  border: 'none',
+                  boxShadow: activeTab === 'existencias' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
+                }}
+              >
+                <Boxes size={14} strokeWidth={2.4} />
+                <span>Existencias</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('kardex')}
+                className={activeTab === 'kardex' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+                style={{
+                  borderRadius: '999px',
+                  height: '34px',
+                  padding: '0 0.85rem',
+                  fontSize: '0.78rem',
+                  border: 'none',
+                  boxShadow: activeTab === 'kardex' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
+                }}
+              >
+                <ClipboardList size={14} strokeWidth={2.4} />
+                <span>Kardex</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('alertas')}
+                className={activeTab === 'alertas' ? 'btn-danger btn-sm' : 'btn-ghost btn-sm'}
+                style={{
+                  borderRadius: '999px',
+                  height: '34px',
+                  padding: '0 0.85rem',
+                  fontSize: '0.78rem',
+                  border: 'none',
+                  boxShadow: activeTab === 'alertas' ? '0 2px 0 var(--toy-red-dark)' : 'none'
+                }}
+              >
+                <AlertTriangle size={14} strokeWidth={2.4} />
+                <span>Alertas {totalAlertasActivas > 0 ? `(${totalAlertasActivas})` : ''}</span>
+              </button>
+            </div>
 
             <PermissionGate permission="inventario.ajustar">
               <button
