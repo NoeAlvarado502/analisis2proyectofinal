@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   Send,
   CheckCheck,
-  Trash2
+  Trash2,
+  FilePlus
 } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
@@ -47,7 +48,6 @@ export default function VentasPage() {
   const [loadingVentas, setLoadingVentas] = useState(false);
   const [qVentas, setQVentas] = useState('');
   const [filterEstadoVenta, setFilterEstadoVenta] = useState('');
-  const [soloSaldoPendiente, setSoloSaldoPendiente] = useState(false);
   const [filterFechaDesde, setFilterFechaDesde] = useState('');
   const [filterFechaHasta, setFilterFechaHasta] = useState('');
   const [pageVentas, setPageVentas] = useState(1);
@@ -90,13 +90,17 @@ export default function VentasPage() {
   const [loadingVentaDetail, setLoadingVentaDetail] = useState(false);
 
   // Modal / Formulario Registrar Pago a Venta Existente
+  // Modal Cobro de Factura (idéntico a desglose de formas de pago en Facturar)
   const [pagoModalOpen, setPagoModalOpen] = useState(false);
-  const [pagoForm, setPagoForm] = useState({
-    numero_recibo: '',
-    monto: '',
-    metodo_pago: 'EFECTIVO',
-    referencia_pago: ''
-  });
+  const [pagosCobro, setPagosCobro] = useState([
+    { id: 1, monto: '', metodo_pago: 'EFECTIVO', referencia_pago: '' }
+  ]);
+  const totalPagosCobro = useMemo(() => {
+    return pagosCobro.reduce((acc, p) => {
+      const val = parseFloat(p.monto);
+      return acc + (isNaN(val) ? 0 : val);
+    }, 0);
+  }, [pagosCobro]);
   const [submittingPago, setSubmittingPago] = useState(false);
 
   // Modal Anular Venta
@@ -115,7 +119,7 @@ export default function VentasPage() {
   const [totalRecordsPagos, setTotalRecordsPagos] = useState(0);
 
   const metodoPagoOptions = [
-    { value: '', label: 'Todos los métodos', shortLabel: 'Método' },
+    { value: '', label: 'Todos los métodos', shortLabel: 'Métodos' },
     { value: 'EFECTIVO', label: 'Efectivo', shortLabel: 'Efectivo' },
     { value: 'TARJETA_DEBITO', label: 'Tarjeta de Débito', shortLabel: 'Débito' },
     { value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito', shortLabel: 'Crédito' },
@@ -138,7 +142,6 @@ export default function VentasPage() {
       const params = { page: pageVentas, limit: 10 };
       if (qVentas.trim()) params.q = qVentas.trim();
       if (filterEstadoVenta) params.estado = filterEstadoVenta;
-      if (soloSaldoPendiente) params.con_saldo_pendiente = 'true';
       if (filterFechaDesde) params.fecha_desde = filterFechaDesde;
       if (filterFechaHasta) params.fecha_hasta = filterFechaHasta;
 
@@ -155,7 +158,7 @@ export default function VentasPage() {
     } finally {
       setLoadingVentas(false);
     }
-  }, [pageVentas, qVentas, filterEstadoVenta, soloSaldoPendiente, filterFechaDesde, filterFechaHasta, toast]);
+  }, [pageVentas, qVentas, filterEstadoVenta, filterFechaDesde, filterFechaHasta, toast]);
 
   const fetchPagos = useCallback(async () => {
     setLoadingPagos(true);
@@ -409,78 +412,136 @@ export default function VentasPage() {
     }
   };
 
-  // Abrir modal de registrar pago sobre venta seleccionada
-  const handleOpenRegistrarPago = async () => {
-    if (!selectedVentaDetail) return;
-    let recSugerido = '';
-    try {
-      const sug = await api.get('/pagos/sugerir-recibo');
-      if (sug?.data?.sugerencia) {
-        recSugerido = sug.data.sugerencia;
+  const handleAddPagoCobroRow = () => {
+    const saldoPend = parseFloat(selectedVentaDetail?.saldo_pendiente || 0);
+    const restante = Math.max(0, saldoPend - totalPagosCobro);
+    setPagosCobro((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        monto: restante > 0 ? (Math.round(restante * 100) / 100).toFixed(2) : '',
+        metodo_pago: 'TRANSFERENCIA',
+        referencia_pago: ''
       }
-    } catch (err) {
-      console.error('Error sugiriendo recibo:', err);
-    }
-
-    setPagoForm({
-      numero_recibo: recSugerido,
-      monto: String(selectedVentaDetail.saldo_pendiente || ''),
-      metodo_pago: 'EFECTIVO',
-      referencia_pago: ''
-    });
-    setPagoModalOpen(true);
+    ]);
   };
 
-  // Enviar registro de pago
+  const handleRemovePagoCobroRow = (idToRemove) => {
+    setPagosCobro((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((p) => p.id !== idToRemove);
+    });
+  };
+
+  const handleUpdatePagoCobroRow = (id, field, value) => {
+    setPagosCobro((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p;
+        if (field === 'monto') {
+          let sanitized = value.replace(/[^0-9.]/g, '');
+          const parts = sanitized.split('.');
+          if (parts.length > 2) {
+            sanitized = parts[0] + '.' + parts.slice(1).join('');
+          }
+          return { ...p, monto: sanitized };
+        }
+        return { ...p, [field]: value };
+      })
+    );
+  };
+
+  // Abrir modal de cobro sobre venta seleccionada (Cobrar)
+  const handleOpenCobrar = async (ventaItem) => {
+    try {
+      let ventaData = ventaItem;
+      if (!ventaItem.detalles || ventaItem.detalles.length === 0) {
+        const res = await api.get(`/ventas/${ventaItem.id_venta}`);
+        if (res?.data) ventaData = res.data;
+      }
+      setSelectedVentaDetail(ventaData);
+
+      const saldoPend = parseFloat(ventaData.saldo_pendiente || 0);
+      setPagosCobro([
+        {
+          id: Date.now(),
+          monto: saldoPend > 0 ? (Math.round(saldoPend * 100) / 100).toFixed(2) : '',
+          metodo_pago: 'EFECTIVO',
+          referencia_pago: ''
+        }
+      ]);
+      setPagoModalOpen(true);
+    } catch (err) {
+      toast.error('Error al cargar datos para el cobro');
+    }
+  };
+
+  // Enviar registro de cobro (permite multi-pago con recibos autoincrementales en backend)
   const handleSubmitPago = async (e) => {
     e.preventDefault();
 
-    const montoNum = parseFloat(pagoForm.monto);
     const saldoPend = parseFloat(selectedVentaDetail?.saldo_pendiente || 0);
 
-    if (isNaN(montoNum) || montoNum <= 0) {
-      toast.error('El monto a pagar debe ser mayor a 0');
-      return;
+    const listaPagos = [];
+    for (let i = 0; i < pagosCobro.length; i++) {
+      const p = pagosCobro[i];
+      const montoNum = parseFloat(p.monto);
+      if (isNaN(montoNum) || montoNum <= 0) {
+        toast.error(`El monto del pago #${i + 1} debe ser mayor a 0`);
+        return;
+      }
+      if (p.metodo_pago === 'TRANSFERENCIA' && !p.referencia_pago?.trim()) {
+        toast.error(`Ingresa la referencia o comprobante para transferencia en el pago #${i + 1}`);
+        return;
+      }
+      listaPagos.push({
+        monto: montoNum,
+        metodo_pago: p.metodo_pago,
+        referencia_pago: p.metodo_pago === 'TRANSFERENCIA' ? p.referencia_pago.trim() : null
+      });
     }
 
-    if (montoNum > saldoPend + 0.001) {
-      toast.error(`El pago no puede superar el saldo pendiente (RN09): Q${saldoPend.toFixed(2)}`);
-      return;
-    }
-
-    if (pagoForm.metodo_pago === 'TRANSFERENCIA' && !pagoForm.referencia_pago?.trim()) {
-      toast.error('Ingresa la referencia o comprobante para transferencia bancaria');
+    if (totalPagosCobro > saldoPend + 0.001) {
+      toast.error(
+        `El total a cobrar (Q${totalPagosCobro.toFixed(2)}) no puede superar el saldo pendiente (Q${saldoPend.toFixed(2)})`
+      );
       return;
     }
 
     setSubmittingPago(true);
     try {
-      const payload = {
-        id_venta: selectedVentaDetail.id_venta,
-        numero_recibo: pagoForm.numero_recibo?.trim() || null,
-        monto: montoNum,
-        metodo_pago: pagoForm.metodo_pago,
-        referencia_pago: pagoForm.metodo_pago === 'TRANSFERENCIA' ? (pagoForm.referencia_pago?.trim() || null) : null
-      };
+      let ultimaVenta = null;
+      for (const p of listaPagos) {
+        const res = await api.post('/pagos', {
+          id_venta: selectedVentaDetail.id_venta,
+          monto: p.monto,
+          metodo_pago: p.metodo_pago,
+          referencia_pago: p.referencia_pago
+        });
+        if (res?.data?.venta) {
+          ultimaVenta = res.data.venta;
+        }
+      }
 
-      const res = await api.post('/pagos', payload);
-      const { venta } = res.data;
-
-      if (venta.estado === 'COMPLETADA') {
+      if (ultimaVenta && ultimaVenta.estado === 'COMPLETADA') {
         toast.success(
-          '¡Pago liquidado al 100%! La venta pasó a COMPLETADA y se registró la SALIDA física de inventario (RN03).'
+          '¡Pago liquidado al 100%! La venta pasó a COMPLETADA y se registró la SALIDA física de inventario.'
         );
       } else {
-        toast.success(`Abono registrado con éxito. Saldo restante: Q${parseFloat(venta.saldo_pendiente).toFixed(2)}.`);
+        const saldoFinal = ultimaVenta
+          ? parseFloat(ultimaVenta.saldo_pendiente)
+          : Math.max(0, saldoPend - totalPagosCobro);
+        toast.success(`Cobro registrado con éxito. Saldo restante: Q${saldoFinal.toFixed(2)}.`);
       }
 
       setPagoModalOpen(false);
-      // Recargar datos actualizados de la venta en el modal
-      const resVentaActualizada = await api.get(`/ventas/${selectedVentaDetail.id_venta}`);
-      setSelectedVentaDetail(resVentaActualizada.data);
+      if (viewVentaModalOpen) {
+        const resVentaActualizada = await api.get(`/ventas/${selectedVentaDetail.id_venta}`);
+        setSelectedVentaDetail(resVentaActualizada.data);
+      }
       fetchVentas();
+      fetchPagos();
     } catch (err) {
-      toast.error(err.message || 'Error al registrar el pago');
+      toast.error(err.message || 'Error al registrar el cobro');
     } finally {
       setSubmittingPago(false);
     }
@@ -629,8 +690,8 @@ export default function VentasPage() {
             <button
               type="button"
               className="btn btn-success btn-sm"
-              onClick={() => handleOpenVentaDetail(row)}
-              title="Abonar / Liquidar venta"
+              onClick={() => handleOpenCobrar(row)}
+              title="Cobrar factura pendiente"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '0.35rem 0.65rem' }}
             >
               <CreditCard size={13} />
@@ -714,175 +775,164 @@ export default function VentasPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <PageCard
-        title="Gestión de Ventas, Facturación y Cobranza"
-        subtitle="Emisión de facturas desde pedidos aprobados, control de saldo y registro de pagos"
+        title="Ventas y Pagos"
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Input de búsqueda a la izquierda de los filtros */}
+            <SearchInput
+              value={activeTab === 'facturas' ? qVentas : qPagos}
+              onChange={(e) => {
+                const val = e?.target ? e.target.value : (e || '');
+                if (activeTab === 'facturas') {
+                  setQVentas(val);
+                  setPageVentas(1);
+                } else {
+                  setQPagos(val);
+                  setPagePagos(1);
+                }
+              }}
+              placeholder=""
+              width="210px"
+              ariaLabel={activeTab === 'facturas' ? 'Buscar facturas' : 'Buscar pagos'}
+            />
+
+            {/* Filtro estados/métodos a la izquierda de facturas/historial de pagos */}
+            {activeTab === 'facturas' ? (
+              <FilterDropdown
+                title="Filtrar por estado"
+                buttonTitle="Estados"
+                value={filterEstadoVenta}
+                onChange={(val) => {
+                  setFilterEstadoVenta(val);
+                  setPageVentas(1);
+                }}
+                options={estadoVentaOptions}
+              />
+            ) : (
+              <FilterDropdown
+                title="Filtrar por método de pago"
+                buttonTitle="Métodos"
+                value={filterMetodoPago}
+                onChange={(val) => {
+                  setFilterMetodoPago(val);
+                  setPagePagos(1);
+                }}
+                options={metodoPagoOptions}
+              />
+            )}
+
+            {/* Switcher de Pestañas estilo Píldora (Facturas / Historial de Pagos) */}
+            <div
+              style={{
+                backgroundColor: 'rgba(255, 244, 221, 0.85)',
+                padding: '0.25rem',
+                borderRadius: '999px',
+                border: '2px solid var(--toy-border)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setActiveTab('facturas')}
+                className={activeTab === 'facturas' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+                style={{
+                  borderRadius: '999px',
+                  height: '34px',
+                  padding: '0 0.85rem',
+                  fontSize: '0.78rem',
+                  border: 'none',
+                  boxShadow: activeTab === 'facturas' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
+                }}
+              >
+                <Receipt size={14} strokeWidth={2.4} />
+                <span>Facturas</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('pagos')}
+                className={activeTab === 'pagos' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+                style={{
+                  borderRadius: '999px',
+                  height: '34px',
+                  padding: '0 0.85rem',
+                  fontSize: '0.78rem',
+                  border: 'none',
+                  boxShadow: activeTab === 'pagos' ? '0 2px 0 var(--toy-deep-blue)' : 'none'
+                }}
+              >
+                <CreditCard size={14} strokeWidth={2.4} />
+                <span>Historial de Pagos</span>
+              </button>
+            </div>
+
             {canRegisterVentas && (
               <button
                 type="button"
                 className="btn btn-primary"
                 onClick={() => handleOpenFacturar(null)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                title="Facturar Pedido Aprobado"
+                aria-label="Facturar Pedido Aprobado"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '12px',
+                  flexShrink: 0
+                }}
               >
-                <Plus size={18} strokeWidth={2.4} />
-                <span>Facturar Pedido Aprobado</span>
+                <FilePlus size={20} strokeWidth={2.4} />
               </button>
             )}
           </div>
         }
       >
-        {/* Pestañas de Navegación */}
-        <div
-          style={{
-            display: 'flex',
-            backgroundColor: '#F8F5EE',
-            borderBottom: '2px solid var(--toy-border)',
-            padding: '0.5rem 1.25rem 0',
-            gap: '0.5rem'
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setActiveTab('facturas')}
-            style={{
-              padding: '0.65rem 1.2rem',
-              border: 'none',
-              borderBottom: activeTab === 'facturas' ? '3px solid var(--toy-blue)' : '3px solid transparent',
-              backgroundColor: activeTab === 'facturas' ? '#FFFFFF' : 'transparent',
-              color: activeTab === 'facturas' ? 'var(--toy-deep-blue)' : 'var(--toy-muted)',
-              fontWeight: 800,
-              fontSize: '0.92rem',
-              cursor: 'pointer',
-              borderTopLeftRadius: '10px',
-              borderTopRightRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
-          >
-            <Receipt size={18} />
-            <span>Facturas de Venta ({totalRecordsVentas})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('pagos')}
-            style={{
-              padding: '0.65rem 1.2rem',
-              border: 'none',
-              borderBottom: activeTab === 'pagos' ? '3px solid var(--toy-blue)' : '3px solid transparent',
-              backgroundColor: activeTab === 'pagos' ? '#FFFFFF' : 'transparent',
-              color: activeTab === 'pagos' ? 'var(--toy-deep-blue)' : 'var(--toy-muted)',
-              fontWeight: 800,
-              fontSize: '0.92rem',
-              cursor: 'pointer',
-              borderTopLeftRadius: '10px',
-              borderTopRightRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
-          >
-            <CreditCard size={18} />
-            <span>Historial de Pagos y Recibos</span>
-          </button>
-        </div>
-
         {/* PESTAÑA 1: FACTURAS DE VENTA */}
         {activeTab === 'facturas' && (
           <>
             <div
               style={{
-                padding: '1rem 1.25rem',
+                padding: '0.75rem 1.25rem',
                 backgroundColor: '#FAFAFA',
                 borderBottom: '1px solid var(--toy-border)',
                 display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.85rem',
+                gap: '0.5rem',
                 alignItems: 'center',
-                justifyContent: 'space-between'
+                justifyContent: 'flex-end',
+                flexWrap: 'wrap'
               }}
             >
-              <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
-                <div style={{ width: '280px' }}>
-                  <SearchInput
-                    value={qVentas}
-                    onChange={setQVentas}
-                    placeholder="Buscar factura, pedido o cliente..."
-                  />
-                </div>
-
-                <FilterDropdown
-                  title="Estado de Factura"
-                  buttonTitle="Estado"
-                  value={filterEstadoVenta}
-                  onChange={setFilterEstadoVenta}
-                  options={estadoVentaOptions}
-                />
-
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    backgroundColor: '#FFFFFF',
-                    border: '1.5px solid var(--toy-border)',
-                    borderRadius: '12px',
-                    padding: '0.4rem 0.75rem'
-                  }}
-                >
-                  <ToySwitch
-                    id="switch-con-saldo"
-                    checked={soloSaldoPendiente}
-                    onChange={(val) => {
-                      setSoloSaldoPendiente(val);
-                      setPageVentas(1);
-                    }}
-                  />
-                  <label
-                    htmlFor="switch-con-saldo"
-                    style={{
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      color: soloSaldoPendiente ? 'var(--toy-orange-dark)' : 'var(--toy-ink)',
-                      cursor: 'pointer',
-                      userSelect: 'none'
-                    }}
-                  >
-                    Con Saldo Pendiente
-                  </label>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Desde:</span>
-                <DatePicker
-                  value={filterFechaDesde}
-                  onChange={(val) => {
-                    if (val && val > hoyStr) return;
-                    setFilterFechaDesde(val);
-                    setPageVentas(1);
-                  }}
-                  placeholder="Desde"
-                  width="135px"
-                  max={filterFechaHasta || hoyStr}
-                />
-                <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Hasta:</span>
-                <DatePicker
-                  value={filterFechaHasta}
-                  onChange={(val) => {
-                    if (val && val > hoyStr) return;
-                    setFilterFechaHasta(val);
-                    setPageVentas(1);
-                  }}
-                  placeholder="Hasta"
-                  width="135px"
-                  min={filterFechaDesde || undefined}
-                  max={hoyStr}
-                  align="right"
-                />
-              </div>
+              <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Desde:</span>
+              <DatePicker
+                value={filterFechaDesde}
+                onChange={(val) => {
+                  if (val && val > hoyStr) return;
+                  setFilterFechaDesde(val);
+                  setPageVentas(1);
+                }}
+                placeholder="Desde"
+                width="135px"
+                max={filterFechaHasta || hoyStr}
+              />
+              <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Hasta:</span>
+              <DatePicker
+                value={filterFechaHasta}
+                onChange={(val) => {
+                  if (val && val > hoyStr) return;
+                  setFilterFechaHasta(val);
+                  setPageVentas(1);
+                }}
+                placeholder="Hasta"
+                width="135px"
+                min={filterFechaDesde || undefined}
+                max={hoyStr}
+                align="right"
+              />
             </div>
 
             <DataTable
@@ -906,62 +956,42 @@ export default function VentasPage() {
           <>
             <div
               style={{
-                padding: '1rem 1.25rem',
+                padding: '0.75rem 1.25rem',
                 backgroundColor: '#FAFAFA',
                 borderBottom: '1px solid var(--toy-border)',
                 display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.85rem',
+                gap: '0.5rem',
                 alignItems: 'center',
-                justifyContent: 'space-between'
+                justifyContent: 'flex-end',
+                flexWrap: 'wrap'
               }}
             >
-              <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
-                <div style={{ width: '280px' }}>
-                  <SearchInput
-                    value={qPagos}
-                    onChange={setQPagos}
-                    placeholder="Buscar recibo, factura o cliente..."
-                  />
-                </div>
-
-                <FilterDropdown
-                  title="Método de Pago"
-                  buttonTitle="Método"
-                  value={filterMetodoPago}
-                  onChange={setFilterMetodoPago}
-                  options={metodoPagoOptions}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Desde:</span>
-                <DatePicker
-                  value={filterFechaDesde}
-                  onChange={(val) => {
-                    if (val && val > hoyStr) return;
-                    setFilterFechaDesde(val);
-                    setPagePagos(1);
-                  }}
-                  placeholder="Desde"
-                  width="135px"
-                  max={filterFechaHasta || hoyStr}
-                />
-                <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Hasta:</span>
-                <DatePicker
-                  value={filterFechaHasta}
-                  onChange={(val) => {
-                    if (val && val > hoyStr) return;
-                    setFilterFechaHasta(val);
-                    setPagePagos(1);
-                  }}
-                  placeholder="Hasta"
-                  width="135px"
-                  min={filterFechaDesde || undefined}
-                  max={hoyStr}
-                  align="right"
-                />
-              </div>
+              <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Desde:</span>
+              <DatePicker
+                value={filterFechaDesde}
+                onChange={(val) => {
+                  if (val && val > hoyStr) return;
+                  setFilterFechaDesde(val);
+                  setPagePagos(1);
+                }}
+                placeholder="Desde"
+                width="135px"
+                max={filterFechaHasta || hoyStr}
+              />
+              <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Hasta:</span>
+              <DatePicker
+                value={filterFechaHasta}
+                onChange={(val) => {
+                  if (val && val > hoyStr) return;
+                  setFilterFechaHasta(val);
+                  setPagePagos(1);
+                }}
+                placeholder="Hasta"
+                width="135px"
+                min={filterFechaDesde || undefined}
+                max={hoyStr}
+                align="right"
+              />
             </div>
 
             <DataTable
@@ -1100,7 +1130,7 @@ export default function VentasPage() {
                     </span>
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm"
+                      className="btn btn-primary btn-sm"
                       onClick={handleAddPagoInicialRow}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}
                     >
@@ -1347,21 +1377,10 @@ export default function VentasPage() {
 
             {/* Tabla de Pagos Realizados */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div style={{ marginBottom: '0.5rem' }}>
                 <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
                   Historial de Pagos y Abonos Registrados
                 </h4>
-                {selectedVentaDetail.estado === 'PENDIENTE' && parseFloat(selectedVentaDetail.saldo_pendiente) > 0 && canRegisterPagos && (
-                  <button
-                    type="button"
-                    className="btn btn-success btn-sm"
-                    onClick={handleOpenRegistrarPago}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    <Plus size={14} />
-                    <span>Registrar Nuevo Pago / Abono</span>
-                  </button>
-                )}
               </div>
 
               <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
@@ -1439,98 +1458,252 @@ export default function VentasPage() {
       </Modal>
 
       {/* ========================================================
-          MODAL: REGISTRAR PAGO A VENTA EXISTENTE
+          MODAL: REGISTRAR PAGO A VENTA EXISTENTE (COBRAR)
          ======================================================== */}
       <Modal
         isOpen={pagoModalOpen}
         onClose={() => setPagoModalOpen(false)}
-        title={`Registrar Pago a Factura #${selectedVentaDetail?.numero_factura}`}
-        size="medium"
+        title={selectedVentaDetail ? `Cobrar Factura #${selectedVentaDetail.numero_factura}` : 'Registrar Cobro'}
+        size="large"
       >
-        <form onSubmit={handleSubmitPago} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div
-            style={{
-              padding: '0.75rem',
-              backgroundColor: '#F8F5EE',
-              borderRadius: '12px',
-              fontSize: '0.85rem',
-              display: 'flex',
-              justifyContent: 'space-between'
-            }}
-          >
-            <span>Saldo Pendiente Actual:</span>
-            <strong style={{ color: 'var(--toy-orange-dark)', fontSize: '0.95rem' }}>
-              Q{parseFloat(selectedVentaDetail?.saldo_pendiente || 0).toFixed(2)}
-            </strong>
-          </div>
-
-          <FormField label="Número de Recibo" required>
-            <input
-              type="text"
-              className="form-control"
-              value={pagoForm.numero_recibo}
-              onChange={(e) => setPagoForm({ ...pagoForm, numero_recibo: e.target.value })}
-              placeholder="Ej. REC-0001"
-            />
-          </FormField>
-
-          <FormField label="Monto a Pagar (Q)" required>
-            <input
-              type="text"
-              inputMode="decimal"
-              className="form-control"
-              placeholder="0.00"
-              value={pagoForm.monto}
-              onChange={(e) => {
-                let val = e.target.value.replace(/[^0-9.]/g, '');
-                const parts = val.split('.');
-                if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
-                setPagoForm({ ...pagoForm, monto: val });
+        {selectedVentaDetail && (
+          <form onSubmit={handleSubmitPago} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+            {/* 1. Resumen de la Factura y Pedido (Idéntico a estructura de Facturar) */}
+            <div
+              style={{
+                backgroundColor: '#FFFDF9',
+                border: '1.5px solid var(--toy-border)',
+                borderRadius: '16px',
+                padding: '1.1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.85rem'
               }}
-            />
-          </FormField>
-
-          <FormField label="Método de Pago" required>
-            <SearchableSelect
-              value={pagoForm.metodo_pago}
-              onChange={(val) => setPagoForm({ ...pagoForm, metodo_pago: val })}
-              options={METODOS_PAGO_SELECT}
-              placeholder="Seleccionar método de pago..."
-            />
-          </FormField>
-
-          {pagoForm.metodo_pago === 'TRANSFERENCIA' && (
-            <FormField label="No. Comprobante / Transferencia" required>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Ej. Boleta o No. de autorización bancaria"
-                value={pagoForm.referencia_pago}
-                onChange={(e) => setPagoForm({ ...pagoForm, referencia_pago: e.target.value })}
-              />
-            </FormField>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setPagoModalOpen(false)}
-              disabled={submittingPago}
             >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="btn btn-success"
-              disabled={submittingPago}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+                    Detalle de Factura #{selectedVentaDetail.numero_factura}
+                  </h4>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--toy-muted)', marginTop: '2px' }}>
+                    Cliente: <strong style={{ color: 'var(--toy-ink)' }}>{selectedVentaDetail.cliente_nombre}</strong> (NIT: {selectedVentaDetail.cliente_identificacion || 'C/F'})
+                    {selectedVentaDetail.numero_pedido && ` • Pedido: ${selectedVentaDetail.numero_pedido}`}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--toy-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                      Total Factura
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--toy-deep-blue)' }}>
+                      Q{parseFloat(selectedVentaDetail.total).toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--toy-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                      Saldo Pendiente
+                    </div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--toy-orange-dark)' }}>
+                      Q{parseFloat(selectedVentaDetail.saldo_pendiente).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabla de Productos Facturados */}
+              {(selectedVentaDetail.detalles || []).length > 0 && (
+                <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#F8F5EE', textAlign: 'left', borderBottom: '1px solid var(--toy-border)' }}>
+                      <th style={{ padding: '0.45rem' }}>Producto</th>
+                      <th style={{ padding: '0.45rem', textAlign: 'center' }}>Cantidad</th>
+                      <th style={{ padding: '0.45rem', textAlign: 'right' }}>Precio Unit.</th>
+                      <th style={{ padding: '0.45rem', textAlign: 'right' }}>Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedVentaDetail.detalles.map((det, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--toy-border-light)' }}>
+                        <td style={{ padding: '0.45rem' }}>
+                          <span style={{ fontWeight: 700 }}>{det.producto_nombre}</span> ({det.codigo_sku})
+                        </td>
+                        <td style={{ padding: '0.45rem', textAlign: 'center', fontWeight: 700 }}>{det.cantidad}</td>
+                        <td style={{ padding: '0.45rem', textAlign: 'right' }}>
+                          Q{parseFloat(det.precio_unitario || det.precio_escala || 0).toFixed(2)}
+                        </td>
+                        <td style={{ padding: '0.45rem', textAlign: 'right', fontWeight: 700 }}>
+                          Q{parseFloat(det.subtotal || 0).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* 2. Sección de Cobro / Pago (Copia exacta de la interfaz de Generar Factura) */}
+            <div
+              style={{
+                backgroundColor: '#FBF9F4',
+                border: '1.5px solid var(--toy-border)',
+                borderRadius: '16px',
+                padding: '1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.85rem'
+              }}
             >
-              <CheckCircle size={16} />
-              <span>{submittingPago ? 'Procesando Pago...' : 'Confirmar y Asentar Pago'}</span>
-            </button>
-          </div>
-        </form>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.84rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+                  Desglose de Formas de Pago
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={handleAddPagoCobroRow}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}
+                >
+                  <Plus size={14} />
+                  <span>Agregar Otro Pago</span>
+                </button>
+              </div>
+
+              {pagosCobro.map((pagoRow, idx) => {
+                const isTransferencia = pagoRow.metodo_pago === 'TRANSFERENCIA';
+                return (
+                  <div
+                    key={pagoRow.id}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: isTransferencia ? '1.4fr 1.1fr 1.4fr auto' : '1.5fr 1.5fr auto',
+                      gap: '0.75rem',
+                      alignItems: 'flex-end',
+                      backgroundColor: '#FFFFFF',
+                      padding: '0.75rem',
+                      borderRadius: '12px',
+                      border: '1px solid var(--toy-border-light)'
+                    }}
+                  >
+                    <FormField label={`Método #${idx + 1}`} required>
+                      <SearchableSelect
+                        value={pagoRow.metodo_pago}
+                        onChange={(val) => handleUpdatePagoCobroRow(pagoRow.id, 'metodo_pago', val)}
+                        options={METODOS_PAGO_SELECT}
+                        placeholder="Selecciona método..."
+                      />
+                    </FormField>
+
+                    <FormField label="Monto (Q)" required>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="form-control"
+                        placeholder="0.00"
+                        value={pagoRow.monto}
+                        onChange={(e) => handleUpdatePagoCobroRow(pagoRow.id, 'monto', e.target.value)}
+                      />
+                    </FormField>
+
+                    {isTransferencia && (
+                      <FormField label="No. Comprobante / Transf." required>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Ej. TRANSF-0912"
+                          value={pagoRow.referencia_pago}
+                          onChange={(e) => handleUpdatePagoCobroRow(pagoRow.id, 'referencia_pago', e.target.value)}
+                        />
+                      </FormField>
+                    )}
+
+                    {pagosCobro.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={() => handleRemovePagoCobroRow(pagoRow.id)}
+                        title="Eliminar este pago"
+                        style={{
+                          height: '42px',
+                          width: '42px',
+                          padding: 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          boxShadow: '0 3px 0 #DC2626'
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Resumen de Cobro */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.7rem 0.9rem',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '10px',
+                  border: '1.5px solid var(--toy-border)',
+                  fontSize: '0.85rem',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem'
+                }}
+              >
+                <div>
+                  <span>Saldo Pendiente: </span>
+                  <strong style={{ color: 'var(--toy-ink)' }}>Q{parseFloat(selectedVentaDetail.saldo_pendiente).toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span>Cobrado en este acto: </span>
+                  <strong
+                    style={{
+                      color:
+                        totalPagosCobro > parseFloat(selectedVentaDetail.saldo_pendiente) + 0.001
+                          ? '#DC2626'
+                          : 'var(--toy-green-dark)'
+                    }}
+                  >
+                    Q{totalPagosCobro.toFixed(2)}
+                  </strong>
+                </div>
+                <div>
+                  <span>Saldo Restante: </span>
+                  <strong style={{ color: 'var(--toy-orange-dark)' }}>
+                    Q{Math.max(0, parseFloat(selectedVentaDetail.saldo_pendiente) - totalPagosCobro).toFixed(2)}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setPagoModalOpen(false)}
+                disabled={submittingPago}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={submittingPago}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <CheckCircle size={16} />
+                <span>{submittingPago ? 'Procesando Cobro...' : 'Confirmar y Asentar Pago'}</span>
+              </button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* ========================================================
