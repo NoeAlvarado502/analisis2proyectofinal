@@ -16,6 +16,7 @@ import Modal from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import PageCard from '../components/PageCard';
+import DatePicker from '../components/DatePicker';
 
 export default function AuditoriaPage() {
   const toast = useToast();
@@ -32,6 +33,14 @@ export default function AuditoriaPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  const hoyStr = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
 
   // Opciones dinámicas de filtros pobladas desde el backend
   const [modulosDisponibles, setModulosDisponibles] = useState([
@@ -230,28 +239,32 @@ export default function AuditoriaPage() {
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Desde:</span>
-            <input
-              type="date"
-              className="form-control"
-              style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+            <DatePicker
               value={filterFechaDesde}
-              onChange={(e) => {
-                setFilterFechaDesde(e.target.value);
+              onChange={(val) => {
+                if (val && val > hoyStr) return;
+                setFilterFechaDesde(val);
                 setPage(1);
               }}
+              placeholder="Desde"
+              width="135px"
+              max={filterFechaHasta || hoyStr}
             />
             <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Hasta:</span>
-            <input
-              type="date"
-              className="form-control"
-              style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+            <DatePicker
               value={filterFechaHasta}
-              onChange={(e) => {
-                setFilterFechaHasta(e.target.value);
+              onChange={(val) => {
+                if (val && val > hoyStr) return;
+                setFilterFechaHasta(val);
                 setPage(1);
               }}
+              placeholder="Hasta"
+              width="135px"
+              min={filterFechaDesde || undefined}
+              max={hoyStr}
+              align="right"
             />
           </div>
         </div>

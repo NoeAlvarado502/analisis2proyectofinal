@@ -16,6 +16,13 @@ export default function ToySwitch({
 }) {
   const isChecked = Boolean(checked);
 
+  const handleClick = (e) => {
+    e.preventDefault();
+    if (!disabled && onChange) {
+      onChange(!isChecked);
+    }
+  };
+
   return (
     <button
       id={id}
@@ -24,7 +31,7 @@ export default function ToySwitch({
       aria-checked={isChecked}
       className={`toy-switch ${isChecked ? 'active' : ''} ${className}`}
       disabled={disabled}
-      onClick={onChange}
+      onClick={handleClick}
       title={title}
       aria-label={ariaLabel || title}
     >

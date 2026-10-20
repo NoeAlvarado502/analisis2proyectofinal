@@ -603,6 +603,38 @@ a:hover {
   box-shadow: 0 1px 0 var(--toy-red-dark), 0 2px 4px rgba(241, 91, 74, 0.2);
 }
 
+/* Botón Éxito / Autorización: Toy Green */
+.btn-success, .btn-toy-success {
+  background: var(--toy-green);
+  color: #FFFFFF;
+  box-shadow: 0 4px 0 var(--toy-green-dark), 0 6px 12px rgba(116, 201, 91, 0.35);
+}
+.btn-success:hover:not(:disabled), .btn-toy-success:hover:not(:disabled) {
+  background: #86D66E;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--toy-green-dark), 0 8px 16px rgba(116, 201, 91, 0.4);
+}
+.btn-success:active:not(:disabled), .btn-toy-success:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--toy-green-dark), 0 2px 4px rgba(116, 201, 91, 0.2);
+}
+
+/* Botón Advertencia / Aprobación: Toy Orange */
+.btn-warning, .btn-toy-warning {
+  background: var(--toy-orange);
+  color: #FFFFFF;
+  box-shadow: 0 4px 0 var(--toy-orange-dark), 0 6px 12px rgba(255, 157, 46, 0.35);
+}
+.btn-warning:hover:not(:disabled), .btn-toy-warning:hover:not(:disabled) {
+  background: #FFA843;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--toy-orange-dark), 0 8px 16px rgba(255, 157, 46, 0.4);
+}
+.btn-warning:active:not(:disabled), .btn-toy-warning:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--toy-orange-dark), 0 2px 4px rgba(255, 157, 46, 0.2);
+}
+
 /* Botón Fantasma / Contorno Punteado */
 .btn-ghost {
   background: transparent;
@@ -1086,6 +1118,12 @@ a:hover {
   border-color: var(--toy-blue);
   background-color: #F0F9FF;
   color: #0369A1;
+}
+
+.toast-warning {
+  border-color: var(--toy-orange);
+  background-color: #FFFBEB;
+  color: #92400E;
 }
 
 /* ==========================================================================

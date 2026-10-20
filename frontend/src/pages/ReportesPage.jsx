@@ -18,6 +18,7 @@ import { useToast } from '../components/Toast';
 import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import PageCard from '../components/PageCard';
+import DatePicker from '../components/DatePicker';
 
 export default function ReportesPage() {
   const toast = useToast();
@@ -39,6 +40,14 @@ export default function ReportesPage() {
   const [estadoVentas, setEstadoVentas] = useState('');
   const [fechaDesdeVentas, setFechaDesdeVentas] = useState('');
   const [fechaHastaVentas, setFechaHastaVentas] = useState('');
+
+  const hoyStr = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
 
   // ========================================================
   // REPORTE 2: INVENTARIO CRÍTICO Y KARDEX
@@ -367,22 +376,30 @@ export default function ReportesPage() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Desde:</span>
-                <input
-                  type="date"
-                  className="form-control"
-                  style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                <DatePicker
                   value={fechaDesdeVentas}
-                  onChange={(e) => setFechaDesdeVentas(e.target.value)}
+                  onChange={(val) => {
+                    if (val && val > hoyStr) return;
+                    setFechaDesdeVentas(val);
+                  }}
+                  placeholder="Desde"
+                  width="135px"
+                  max={fechaHastaVentas || hoyStr}
                 />
                 <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Hasta:</span>
-                <input
-                  type="date"
-                  className="form-control"
-                  style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                <DatePicker
                   value={fechaHastaVentas}
-                  onChange={(e) => setFechaHastaVentas(e.target.value)}
+                  onChange={(val) => {
+                    if (val && val > hoyStr) return;
+                    setFechaHastaVentas(val);
+                  }}
+                  placeholder="Hasta"
+                  width="135px"
+                  min={fechaDesdeVentas || undefined}
+                  max={hoyStr}
+                  align="right"
                 />
               </div>
             </div>
@@ -520,22 +537,30 @@ export default function ReportesPage() {
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
                   Resumen de Movimientos Kardex por Período
                 </h3>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Desde:</span>
-                  <input
-                    type="date"
-                    className="form-control"
-                    style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                  <DatePicker
                     value={fechaDesdeInv}
-                    onChange={(e) => setFechaDesdeInv(e.target.value)}
+                    onChange={(val) => {
+                      if (val && val > hoyStr) return;
+                      setFechaDesdeInv(val);
+                    }}
+                    placeholder="Desde"
+                    width="135px"
+                    max={fechaHastaInv || hoyStr}
                   />
                   <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Hasta:</span>
-                  <input
-                    type="date"
-                    className="form-control"
-                    style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                  <DatePicker
                     value={fechaHastaInv}
-                    onChange={(e) => setFechaHastaInv(e.target.value)}
+                    onChange={(val) => {
+                      if (val && val > hoyStr) return;
+                      setFechaHastaInv(val);
+                    }}
+                    placeholder="Hasta"
+                    width="135px"
+                    min={fechaDesdeInv || undefined}
+                    max={hoyStr}
+                    align="right"
                   />
                 </div>
               </div>

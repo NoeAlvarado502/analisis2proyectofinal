@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
+  FilePlus,
   Plus,
   Eye,
   Pencil,
@@ -29,6 +30,7 @@ import FilterDropdown from '../components/FilterDropdown';
 import SearchableSelect from '../components/SearchableSelect';
 import ToySwitch from '../components/ToySwitch';
 import PageCard from '../components/PageCard';
+import DatePicker from '../components/DatePicker';
 
 export default function PedidosPage() {
   const { can, user } = useAuth();
@@ -47,12 +49,19 @@ export default function PedidosPage() {
   // Filtros
   const [q, setQ] = useState('');
   const [filterEstado, setFilterEstado] = useState('');
-  const [soloPendientes, setSoloPendientes] = useState(false);
   const [filterFechaDesde, setFilterFechaDesde] = useState('');
   const [filterFechaHasta, setFilterFechaHasta] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  const hoyStr = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
 
   // Catálogos auxiliares
   const [clientesActivos, setClientesActivos] = useState([]);
@@ -98,8 +107,8 @@ export default function PedidosPage() {
   // Opciones de estado
   const estadoOptions = [
     { value: '', label: 'Todos los estados', shortLabel: 'Estados' },
-    { value: 'CREADO', label: 'Borrador (Creado)', shortLabel: 'Borrador' },
     { value: 'PENDIENTE_APROBACION', label: 'Pendiente de Autorización', shortLabel: 'Pendientes' },
+    { value: 'CREADO', label: 'Borrador (Creado)', shortLabel: 'Borrador' },
     { value: 'APROBADO', label: 'Aprobado (Listo para facturar)', shortLabel: 'Aprobados' },
     { value: 'EN_PROCESO', label: 'En Proceso (Facturado)', shortLabel: 'En Proceso' },
     { value: 'COMPLETADO', label: 'Completado (Entregado)', shortLabel: 'Completados' },
@@ -142,11 +151,7 @@ export default function PedidosPage() {
     try {
       const params = { page, limit: 10 };
       if (q.trim()) params.q = q.trim();
-      if (soloPendientes) {
-        params.estado = 'PENDIENTE_APROBACION';
-      } else if (filterEstado) {
-        params.estado = filterEstado;
-      }
+      if (filterEstado) params.estado = filterEstado;
       if (filterFechaDesde) params.fecha_desde = filterFechaDesde;
       if (filterFechaHasta) params.fecha_hasta = filterFechaHasta;
 
@@ -163,7 +168,7 @@ export default function PedidosPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, q, filterEstado, soloPendientes, filterFechaDesde, filterFechaHasta, toast]);
+  }, [page, q, filterEstado, filterFechaDesde, filterFechaHasta, toast]);
 
   useEffect(() => {
     fetchPedidos();
@@ -322,7 +327,7 @@ export default function PedidosPage() {
 
     const stockDisponible = selectedProdInfo?.stock_actual ?? 0;
     if (cant > stockDisponible) {
-      toast.error(`Inventario insuficiente (RN01): Solo hay ${stockDisponible} unidades disponibles.`);
+      toast.error(`Inventario insuficiente. Solo hay ${stockDisponible} unidades`);
       return;
     }
 
@@ -408,7 +413,7 @@ export default function PedidosPage() {
 
     if (totalesCalculados.tieneDescuentoMayor && !formData.motivo_descuento_especial?.trim()) {
       setFormErrors({
-        motivo_descuento_especial: 'El descuento supera el 10%. Es obligatorio indicar el motivo del descuento especial (RN07).'
+        motivo_descuento_especial: 'El descuento supera el 10%. Es obligatorio indicar el motivo del descuento especial'
       });
       toast.error('Indica el motivo del descuento especial superior al límite.');
       return;
@@ -504,6 +509,7 @@ export default function PedidosPage() {
       setAuthorizing(false);
     }
   };
+
 
   // Cancelar pedido
   const handleConfirmCancel = async () => {
@@ -703,18 +709,6 @@ export default function PedidosPage() {
               <Pencil size={15} />
             </button>
           )}
-          {row.estado === 'APROBADO' && canRegisterVenta && (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => navigate('/ventas', { state: { pedidoAprobado: row } })}
-              title="Facturar pedido aprobado"
-              style={{ padding: '0.35rem 0.65rem' }}
-            >
-              <ShoppingBag size={14} style={{ marginRight: '4px' }} />
-              Facturar
-            </button>
-          )}
         </div>
       )
     }
@@ -723,113 +717,81 @@ export default function PedidosPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <PageCard
-        title="Gestión de Pedidos y Aprobaciones"
-        subtitle="Registro de pedidos de clientes, escalas de mayoreo y flujo de autorización de descuentos"
+        title="Pedidos"
         actions={
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <>
+            <SearchInput
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setPage(1);
+              }}
+              placeholder=""
+              width="210px"
+              ariaLabel="Buscar pedidos"
+            />
+
+            <FilterDropdown
+              title="Filtrar por estado"
+              buttonTitle="Estados"
+              value={filterEstado}
+              onChange={(val) => {
+                setFilterEstado(val);
+                setPage(1);
+              }}
+              options={estadoOptions}
+            />
+
+            <DatePicker
+              value={filterFechaDesde}
+              onChange={(val) => {
+                if (val && val > hoyStr) return;
+                setFilterFechaDesde(val);
+                setPage(1);
+              }}
+              placeholder="Desde"
+              width="130px"
+              max={filterFechaHasta || hoyStr}
+            />
+
+            <DatePicker
+              value={filterFechaHasta}
+              onChange={(val) => {
+                if (val && val > hoyStr) return;
+                setFilterFechaHasta(val);
+                setPage(1);
+              }}
+              placeholder="Hasta"
+              width="130px"
+              min={filterFechaDesde || undefined}
+              max={hoyStr}
+              align="right"
+            />
+
             {canCreate && (
               <button
                 type="button"
                 className="btn btn-primary"
                 onClick={handleOpenCreate}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                title="Registrar Pedido"
+                aria-label="Registrar Pedido"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  padding: 0,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
               >
-                <Plus size={18} strokeWidth={2.4} />
-                <span>Nuevo Pedido</span>
+                <FilePlus size={20} strokeWidth={2.4} />
               </button>
             )}
-          </div>
+          </>
         }
       >
-        {/* Barra de Filtros */}
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            backgroundColor: '#FAFAFA',
-            borderBottom: '1px solid var(--toy-border)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.85rem',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
-            <div style={{ width: '280px' }}>
-              <SearchInput
-                value={q}
-                onChange={setQ}
-                placeholder="Buscar por número o cliente..."
-              />
-            </div>
-
-            <FilterDropdown
-              title="Estado del Pedido"
-              buttonTitle="Estado"
-              value={filterEstado}
-              onChange={setFilterEstado}
-              options={estadoOptions}
-            />
-
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                backgroundColor: '#FFFFFF',
-                border: '1.5px solid var(--toy-border)',
-                borderRadius: '12px',
-                padding: '0.4rem 0.75rem'
-              }}
-            >
-              <ToySwitch
-                id="switch-solo-pendientes"
-                checked={soloPendientes}
-                onChange={(val) => {
-                  setSoloPendientes(val);
-                  setPage(1);
-                }}
-              />
-              <label
-                htmlFor="switch-solo-pendientes"
-                style={{
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  color: soloPendientes ? 'var(--toy-orange-dark)' : 'var(--toy-ink)',
-                  cursor: 'pointer',
-                  userSelect: 'none'
-                }}
-              >
-                Solo Pendientes de Supervisor
-              </label>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Desde:</span>
-            <input
-              type="date"
-              className="form-control"
-              style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
-              value={filterFechaDesde}
-              onChange={(e) => {
-                setFilterFechaDesde(e.target.value);
-                setPage(1);
-              }}
-            />
-            <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Hasta:</span>
-            <input
-              type="date"
-              className="form-control"
-              style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
-              value={filterFechaHasta}
-              onChange={(e) => {
-                setFilterFechaHasta(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-        </div>
 
         {/* Tabla Principal */}
         <DataTable
@@ -853,35 +815,22 @@ export default function PedidosPage() {
       <Modal
         isOpen={formModalOpen}
         onClose={() => setFormModalOpen(false)}
-        title={modalMode === 'create' ? 'Crear Nuevo Pedido de Cliente' : `Editar Pedido #${formData.numero_pedido}`}
+        title={modalMode === 'create' ? 'Registrar Pedido' : `Editar Pedido #${formData.numero_pedido}`}
         size="large"
       >
         <form onSubmit={handleSubmitForm} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
           {/* Cabecera del Pedido */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
-            <FormField label="Número de Pedido">
-              <input
-                type="text"
-                className="form-control"
-                value={formData.numero_pedido}
-                onChange={(e) => setFormData({ ...formData, numero_pedido: e.target.value })}
-                placeholder="Ej. PED-0001 (Automático)"
-                readOnly={modalMode === 'edit'}
-              />
-            </FormField>
-
-            <FormField label="Cliente" error={formErrors.id_cliente} required>
-              <SearchableSelect
-                placeholder="Selecciona un cliente..."
-                value={formData.id_cliente}
-                onChange={(val) => setFormData({ ...formData, id_cliente: val })}
-                options={clientesActivos.map((c) => ({
-                  value: c.id_cliente,
-                  label: `${c.nombre_razon_social} (NIT: ${c.identificacion || 'C/F'})`
-                }))}
-              />
-            </FormField>
-          </div>
+          <FormField label="Cliente" error={formErrors.id_cliente} required>
+            <SearchableSelect
+              placeholder="Selecciona un cliente..."
+              value={formData.id_cliente}
+              onChange={(val) => setFormData({ ...formData, id_cliente: val })}
+              options={clientesActivos.map((c) => ({
+                value: c.id_cliente,
+                label: `${c.nombre_razon_social} (NIT: ${c.identificacion || 'C/F'})`
+              }))}
+            />
+          </FormField>
 
           {/* Subpanel: Agregar Líneas de Productos */}
           <div
@@ -892,7 +841,7 @@ export default function PedidosPage() {
               padding: '1.1rem'
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
                 Líneas de Productos y Escalas
               </h4>
@@ -901,8 +850,15 @@ export default function PedidosPage() {
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr auto', gap: '0.75rem', alignItems: 'flex-end' }}>
-              <div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                gap: '0.75rem',
+                alignItems: 'flex-end'
+              }}
+            >
+              <div style={{ gridColumn: 'span 2', minWidth: '220px' }}>
                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--toy-ink)', marginBottom: '4px', display: 'block' }}>
                   Producto
                 </label>
@@ -922,12 +878,28 @@ export default function PedidosPage() {
                   Cantidad
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="form-control"
-                  min="1"
-                  max={selectedProdInfo?.stock_actual ?? 9999}
                   value={itemInput.cantidad}
-                  onChange={(e) => setItemInput({ ...itemInput, cantidad: e.target.value })}
+                  placeholder="1"
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '');
+                    if (clean === '') {
+                      setItemInput({ ...itemInput, cantidad: '' });
+                      return;
+                    }
+                    let num = parseInt(clean, 10);
+                    if (isNaN(num) || num <= 0) num = 1;
+                    const maxStock = selectedProdInfo?.stock_actual ?? 9999;
+                    if (num > maxStock) num = maxStock;
+                    setItemInput({ ...itemInput, cantidad: num });
+                  }}
+                  onBlur={() => {
+                    if (!itemInput.cantidad || parseInt(itemInput.cantidad, 10) <= 0) {
+                      setItemInput({ ...itemInput, cantidad: 1 });
+                    }
+                  }}
                 />
               </div>
 
@@ -942,18 +914,46 @@ export default function PedidosPage() {
                   max="100"
                   step="0.5"
                   value={itemInput.porcentaje_descuento_extra}
-                  onChange={(e) => setItemInput({ ...itemInput, porcentaje_descuento_extra: e.target.value })}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      setItemInput({ ...itemInput, porcentaje_descuento_extra: '' });
+                      return;
+                    }
+                    let num = parseFloat(raw);
+                    if (isNaN(num) || num < 0) num = 0;
+                    if (num > 100) num = 100;
+                    setItemInput({ ...itemInput, porcentaje_descuento_extra: num });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
 
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleAddItem}
-                style={{ padding: '0.55rem 1rem' }}
-              >
-                Agregar
-              </button>
+              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleAddItem}
+                  title="Agregar producto"
+                  style={{
+                    height: '40px',
+                    width: '100%',
+                    padding: '0 1rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                    fontWeight: 800
+                  }}
+                >
+                  <Plus size={18} strokeWidth={2.6} />
+                  <span>Agregar</span>
+                </button>
+              </div>
             </div>
 
             {/* Vista previa de precio por escala */}
@@ -966,6 +966,8 @@ export default function PedidosPage() {
                   backgroundColor: 'rgba(25, 168, 232, 0.08)',
                   borderRadius: '10px',
                   display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   color: 'var(--toy-deep-blue)',
@@ -988,16 +990,16 @@ export default function PedidosPage() {
           </div>
 
           {/* Tabla de Productos Agregados */}
-          <div>
-            <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', border: '1px solid var(--toy-border)', borderRadius: '12px' }}>
+            <table className="table" style={{ width: '100%', minWidth: '520px', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ backgroundColor: '#F8F5EE', textAlign: 'left', borderBottom: '2px solid var(--toy-border)' }}>
                   <th style={{ padding: '0.55rem' }}>Producto</th>
-                  <th style={{ padding: '0.55rem', textAlign: 'center' }}>Cant.</th>
-                  <th style={{ padding: '0.55rem', textAlign: 'right' }}>Precio Escala</th>
-                  <th style={{ padding: '0.55rem', textAlign: 'center' }}>% Desc.</th>
-                  <th style={{ padding: '0.55rem', textAlign: 'right' }}>Subtotal</th>
-                  <th style={{ padding: '0.55rem', width: '40px' }}></th>
+                  <th style={{ padding: '0.55rem', textAlign: 'center', width: '70px' }}>Cant.</th>
+                  <th style={{ padding: '0.55rem', textAlign: 'right', width: '100px' }}>Precio Escala</th>
+                  <th style={{ padding: '0.55rem', textAlign: 'center', width: '80px' }}>% Desc.</th>
+                  <th style={{ padding: '0.55rem', textAlign: 'right', width: '100px' }}>Subtotal</th>
+                  <th style={{ padding: '0.55rem', width: '50px', textAlign: 'center' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -1014,13 +1016,13 @@ export default function PedidosPage() {
                         <div style={{ fontWeight: 700, color: 'var(--toy-ink)' }}>{item.producto_nombre}</div>
                         <code style={{ fontSize: '0.75rem' }}>{item.codigo_sku}</code>
                       </td>
-                      <td style={{ padding: '0.55rem', textAlign: 'center', fontWeight: 700 }}>
+                      <td style={{ padding: '0.55rem', textAlign: 'center', fontWeight: 700, width: '70px' }}>
                         {item.cantidad}
                       </td>
-                      <td style={{ padding: '0.55rem', textAlign: 'right', fontWeight: 600 }}>
+                      <td style={{ padding: '0.55rem', textAlign: 'right', fontWeight: 600, width: '100px' }}>
                         Q{parseFloat(item.precio_escala).toFixed(2)}
                       </td>
-                      <td style={{ padding: '0.55rem', textAlign: 'center' }}>
+                      <td style={{ padding: '0.55rem', textAlign: 'center', width: '80px' }}>
                         {item.porcentaje_descuento_extra > 0 ? (
                           <span
                             className={`badge ${item.porcentaje_descuento_extra > descuentoMaxConfig ? 'badge-warning' : 'badge-success'}`}
@@ -1032,17 +1034,27 @@ export default function PedidosPage() {
                           '-'
                         )}
                       </td>
-                      <td style={{ padding: '0.55rem', textAlign: 'right', fontWeight: 800, color: 'var(--toy-deep-blue)' }}>
+                      <td style={{ padding: '0.55rem', textAlign: 'right', fontWeight: 800, color: 'var(--toy-deep-blue)', width: '100px' }}>
                         Q{parseFloat(item.subtotal).toFixed(2)}
                       </td>
-                      <td style={{ padding: '0.55rem', textAlign: 'center' }}>
+                      <td style={{ padding: '0.55rem', textAlign: 'center', width: '50px' }}>
                         <button
                           type="button"
-                          className="btn btn-secondary btn-sm"
+                          className="btn btn-danger btn-sm"
                           onClick={() => handleRemoveItem(idx)}
-                          style={{ padding: '0.25rem 0.4rem', color: 'var(--toy-red)' }}
+                          title="Eliminar producto"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            padding: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '8px',
+                            flexShrink: 0
+                          }}
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={15} />
                         </button>
                       </td>
                     </tr>
@@ -1068,7 +1080,7 @@ export default function PedidosPage() {
               <AlertTriangle size={20} color="var(--toy-orange-dark)" style={{ flexShrink: 0, marginTop: '2px' }} />
               <div>
                 <h5 style={{ margin: 0, fontSize: '0.88rem', fontWeight: 800, color: 'var(--toy-orange-dark)' }}>
-                  Aviso de Aprobación Requerida (RN07)
+                  Aprobación requerida
                 </h5>
                 <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--toy-ink)' }}>
                   Al menos un producto tiene un descuento extra superior al límite permitido ({descuentoMaxConfig}%).
@@ -1201,7 +1213,7 @@ export default function PedidosPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                 gap: '1rem',
                 padding: '1rem',
                 backgroundColor: '#FFFDF9',
@@ -1270,7 +1282,8 @@ export default function PedidosPage() {
               <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.94rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
                 Productos del Pedido
               </h4>
-              <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
+                <table className="table" style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#F8F5EE', textAlign: 'left', borderBottom: '2px solid var(--toy-border)' }}>
                     <th style={{ padding: '0.5rem' }}>Producto</th>
@@ -1309,6 +1322,7 @@ export default function PedidosPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Barra de Acciones según Estado */}
@@ -1400,16 +1414,98 @@ export default function PedidosPage() {
         size="medium"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--toy-ink)' }}>
-            Como Supervisor, confirmas la autorización del descuento especial superior al límite para el pedido{' '}
-            <strong>#{selectedPedido?.numero_pedido}</strong> (Total: Q{parseFloat(selectedPedido?.total || 0).toFixed(2)}).
-          </p>
+          {/* Resumen del Pedido */}
+          <div
+            style={{
+              padding: '0.85rem 1rem',
+              backgroundColor: '#FFFDF9',
+              border: '1.5px solid var(--toy-border)',
+              borderRadius: '14px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.5rem'
+            }}
+          >
+            <div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Cliente:</div>
+              <div style={{ fontWeight: 800, color: 'var(--toy-ink)', fontSize: '0.92rem' }}>
+                {selectedPedido?.cliente_nombre}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Total Pedido:</div>
+              <div style={{ fontWeight: 800, color: 'var(--toy-deep-blue)', fontSize: '1.05rem' }}>
+                Q{parseFloat(selectedPedido?.total || 0).toFixed(2)}
+              </div>
+            </div>
+          </div>
 
-          <FormField label="Motivo de la Autorización" required>
+          {/* Tarjeta destacada con el Porqué / Motivo del descuento especial indicado por el vendedor */}
+          <div
+            style={{
+              backgroundColor: 'rgba(255, 157, 46, 0.1)',
+              border: '1.5px solid var(--toy-orange)',
+              borderRadius: '14px',
+              padding: '0.85rem 1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.4rem'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--toy-orange-dark)', fontWeight: 800, fontSize: '0.85rem' }}>
+              <AlertTriangle size={16} />
+              <span>Porqué del Descuento (Justificación del Vendedor):</span>
+            </div>
+            <div
+              style={{
+                fontSize: '0.92rem',
+                color: 'var(--toy-ink)',
+                fontWeight: 700,
+                backgroundColor: '#FFFFFF',
+                padding: '0.65rem 0.85rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255, 157, 46, 0.3)',
+                lineHeight: 1.4
+              }}
+            >
+              {selectedPedido?.motivo_descuento_especial || 'No se indicó un motivo específico en la solicitud.'}
+            </div>
+          </div>
+
+          {/* Desglose de productos que superan el límite de descuento */}
+          {selectedPedido?.detalles && selectedPedido.detalles.some((d) => Number(d.porcentaje_descuento_extra) > descuentoMaxConfig) && (
+            <div
+              style={{
+                backgroundColor: '#F8F5EE',
+                borderRadius: '12px',
+                padding: '0.75rem',
+                fontSize: '0.82rem'
+              }}
+            >
+              <span style={{ fontWeight: 700, color: 'var(--toy-ink)' }}>Productos con descuento superior al {descuentoMaxConfig}%:</span>
+              <ul style={{ margin: '4px 0 0', paddingLeft: '1.25rem' }}>
+                {selectedPedido.detalles
+                  .filter((d) => Number(d.porcentaje_descuento_extra) > descuentoMaxConfig)
+                  .map((d, idx) => (
+                    <li key={idx} style={{ marginTop: '2px', color: 'var(--toy-ink)' }}>
+                      <strong>{d.producto_nombre}</strong> ({d.cantidad} unids.) —{' '}
+                      <span style={{ color: 'var(--toy-orange-dark)', fontWeight: 800 }}>
+                        +{parseFloat(d.porcentaje_descuento_extra).toFixed(1)}% extra
+                      </span>{' '}
+                      (Subtotal: Q{parseFloat(d.subtotal).toFixed(2)})
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+
+          <FormField label="Nota de Aprobación (Supervisor)" required>
             <input
               type="text"
               className="form-control"
-              placeholder="Indica el motivo comercial de la aprobación..."
+              placeholder="Indica el motivo comercial de la aprobación (ej. Aprobado para cliente mayorista)..."
               value={motivoAutorizar}
               onChange={(e) => setMotivoAutorizar(e.target.value)}
             />
@@ -1426,7 +1522,7 @@ export default function PedidosPage() {
             </button>
             <button
               type="button"
-              className="btn btn-success"
+              className="btn btn-primary"
               onClick={handleConfirmAuthorize}
               disabled={authorizing}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}

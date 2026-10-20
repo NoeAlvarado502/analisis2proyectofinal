@@ -10,12 +10,12 @@ export class ReportesService {
 
     if (fecha_desde) {
       whereConditions.push('fecha_venta >= ?');
-      params.push(fecha_desde);
+      params.push(fecha_desde.includes(' ') ? fecha_desde : `${fecha_desde} 00:00:00`);
     }
 
     if (fecha_hasta) {
       whereConditions.push('fecha_venta <= ?');
-      params.push(fecha_hasta);
+      params.push(fecha_hasta.includes(' ') ? fecha_hasta : `${fecha_hasta} 23:59:59`);
     }
 
     if (estado && estado.trim() !== '') {
@@ -86,12 +86,12 @@ export class ReportesService {
 
     if (fecha_desde) {
       kardexWhere.push('fecha_hora >= ?');
-      kardexParams.push(fecha_desde);
+      kardexParams.push(fecha_desde.includes(' ') ? fecha_desde : `${fecha_desde} 00:00:00`);
     }
 
     if (fecha_hasta) {
       kardexWhere.push('fecha_hora <= ?');
-      kardexParams.push(fecha_hasta);
+      kardexParams.push(fecha_hasta.includes(' ') ? fecha_hasta : `${fecha_hasta} 23:59:59`);
     }
 
     const whereKardexClause = kardexWhere.length > 0 ? `WHERE ${kardexWhere.join(' AND ')}` : '';

@@ -32,12 +32,12 @@ export class VentasService {
 
     if (fecha_desde) {
       whereConditions.push('v.fecha_venta >= ?');
-      params.push(fecha_desde);
+      params.push(fecha_desde.includes(' ') ? fecha_desde : `${fecha_desde} 00:00:00`);
     }
 
     if (fecha_hasta) {
       whereConditions.push('v.fecha_venta <= ?');
-      params.push(fecha_hasta);
+      params.push(fecha_hasta.includes(' ') ? fecha_hasta : `${fecha_hasta} 23:59:59`);
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
@@ -160,14 +160,22 @@ export class VentasService {
   /**
    * Genera una venta a partir de un pedido APROBADO, con opción a pago inicial
    */
-  static async crear({ id_pedido, numero_factura, pago_inicial }, currentUserId, permissions = [], ip = null) {
+  static async crear({ id_pedido, numero_factura, pago_inicial, pagos_iniciales }, currentUserId, permissions = [], ip = null) {
     let finalFactura = numero_factura;
     if (!finalFactura || typeof finalFactura !== 'string' || finalFactura.trim() === '') {
       const sug = await VentasService.sugerirFactura();
       finalFactura = sug.sugerencia;
     }
 
-    if (pago_inicial && pago_inicial.monto > 0) {
+    // Unificar lista de pagos iniciales (soporta array múltiple o único)
+    let listaPagos = [];
+    if (Array.isArray(pagos_iniciales) && pagos_iniciales.length > 0) {
+      listaPagos = pagos_iniciales.filter((p) => Number(p.monto) > 0);
+    } else if (pago_inicial && Number(pago_inicial.monto) > 0) {
+      listaPagos = [pago_inicial];
+    }
+
+    if (listaPagos.length > 0) {
       if (!permissions.includes('pagos.registrar')) {
         const err = new Error('No cuenta con el permiso pagos.registrar para asentar el pago inicial');
         err.statusCode = 403;
@@ -184,7 +192,7 @@ export class VentasService {
       );
       const ventaId = ventaRes.insertId;
 
-      if (pago_inicial && pago_inicial.monto > 0) {
+      if (listaPagos.length > 0) {
         const [recRows] = await conn.execute(
           `SELECT numero_recibo FROM pagos WHERE numero_recibo LIKE 'REC-%' ORDER BY id_pago DESC LIMIT 1`
         );
@@ -193,13 +201,17 @@ export class VentasService {
           const match = recRows[0].numero_recibo.match(/^REC-(\d+)$/i);
           if (match) nextRec = parseInt(match[1], 10) + 1;
         }
-        const numero_recibo = `REC-${String(nextRec).padStart(4, '0')}`;
 
-        await conn.execute(
-          `INSERT INTO pagos (numero_recibo, id_venta, id_usuario, monto, metodo_pago, referencia_pago)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [numero_recibo, ventaId, currentUserId, pago_inicial.monto, pago_inicial.metodo_pago, pago_inicial.referencia_pago || null]
-        );
+        for (const p of listaPagos) {
+          const numero_recibo = `REC-${String(nextRec).padStart(4, '0')}`;
+          nextRec++;
+
+          await conn.execute(
+            `INSERT INTO pagos (numero_recibo, id_venta, id_usuario, monto, metodo_pago, referencia_pago)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [numero_recibo, ventaId, currentUserId, p.monto, p.metodo_pago, p.referencia_pago || null]
+          );
+        }
       }
 
       return ventaId;

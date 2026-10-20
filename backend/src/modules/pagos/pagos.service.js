@@ -28,12 +28,12 @@ export class PagosService {
 
     if (fecha_desde) {
       whereConditions.push('pg.fecha_pago >= ?');
-      params.push(fecha_desde);
+      params.push(fecha_desde.includes(' ') ? fecha_desde : `${fecha_desde} 00:00:00`);
     }
 
     if (fecha_hasta) {
       whereConditions.push('pg.fecha_pago <= ?');
-      params.push(fecha_hasta);
+      params.push(fecha_hasta.includes(' ') ? fecha_hasta : `${fecha_hasta} 23:59:59`);
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';

@@ -12,7 +12,8 @@ import {
   Receipt,
   AlertTriangle,
   Send,
-  CheckCheck
+  CheckCheck,
+  Trash2
 } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
@@ -26,6 +27,7 @@ import FilterDropdown from '../components/FilterDropdown';
 import SearchableSelect from '../components/SearchableSelect';
 import ToySwitch from '../components/ToySwitch';
 import PageCard from '../components/PageCard';
+import DatePicker from '../components/DatePicker';
 
 export default function VentasPage() {
   const { can } = useAuth();
@@ -52,19 +54,35 @@ export default function VentasPage() {
   const [totalPagesVentas, setTotalPagesVentas] = useState(1);
   const [totalRecordsVentas, setTotalRecordsVentas] = useState(0);
 
+  const hoyStr = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
+
   // Modal Nueva Venta (Facturación de Pedido Aprobado)
   const [facturarModalOpen, setFacturarModalOpen] = useState(false);
   const [pedidosAprobadosList, setPedidosAprobadosList] = useState([]);
   const [selectedPedidoId, setSelectedPedidoId] = useState('');
   const [selectedPedidoInfo, setSelectedPedidoInfo] = useState(null);
-  const [facturaSugerida, setFacturaSugerida] = useState('');
   const [conPagoInicial, setConPagoInicial] = useState(false);
-  const [pagoInicialData, setPagoInicialData] = useState({
-    monto: '',
-    metodo_pago: 'EFECTIVO',
-    referencia_pago: ''
-  });
+  const [pagosIniciales, setPagosIniciales] = useState([
+    { id: 1, monto: '', metodo_pago: 'EFECTIVO', referencia_pago: '' }
+  ]);
   const [submittingVenta, setSubmittingVenta] = useState(false);
+
+  const METODOS_PAGO_SELECT = [
+    { value: 'EFECTIVO', label: 'Efectivo' },
+    { value: 'TARJETA_DEBITO', label: 'Tarjeta de Débito' },
+    { value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito' },
+    { value: 'TRANSFERENCIA', label: 'Transferencia Bancaria' }
+  ];
+
+  const totalPagosIniciales = useMemo(() => {
+    return pagosIniciales.reduce((acc, p) => acc + (parseFloat(p.monto) || 0), 0);
+  }, [pagosIniciales]);
 
   // Modal Detalle de Venta y Pagos
   const [viewVentaModalOpen, setViewVentaModalOpen] = useState(false);
@@ -186,31 +204,25 @@ export default function VentasPage() {
   // Abrir modal de nueva venta (facturar)
   const handleOpenFacturar = useCallback(async (preselectedPedido = null) => {
     await fetchPedidosAprobados();
-    let numFactura = '';
-    try {
-      const sug = await api.get('/ventas/sugerir-factura');
-      if (sug?.data?.sugerencia) {
-        numFactura = sug.data.sugerencia;
-      }
-    } catch (err) {
-      console.error('Error sugiriendo factura:', err);
-    }
-
-    setFacturaSugerida(numFactura);
     setConPagoInicial(false);
 
     if (preselectedPedido) {
       setSelectedPedidoId(String(preselectedPedido.id_pedido));
       setSelectedPedidoInfo(preselectedPedido);
-      setPagoInicialData({
-        monto: String(preselectedPedido.total || ''),
-        metodo_pago: 'EFECTIVO',
-        referencia_pago: ''
-      });
+      setPagosIniciales([
+        {
+          id: Date.now(),
+          monto: String(preselectedPedido.total || ''),
+          metodo_pago: 'EFECTIVO',
+          referencia_pago: ''
+        }
+      ]);
     } else {
       setSelectedPedidoId('');
       setSelectedPedidoInfo(null);
-      setPagoInicialData({ monto: '', metodo_pago: 'EFECTIVO', referencia_pago: '' });
+      setPagosIniciales([
+        { id: Date.now(), monto: '', metodo_pago: 'EFECTIVO', referencia_pago: '' }
+      ]);
     }
 
     setFacturarModalOpen(true);
@@ -230,19 +242,81 @@ export default function VentasPage() {
     setSelectedPedidoId(pedidoIdStr);
     if (!pedidoIdStr) {
       setSelectedPedidoInfo(null);
+      setPagosIniciales([
+        { id: Date.now(), monto: '', metodo_pago: 'EFECTIVO', referencia_pago: '' }
+      ]);
       return;
     }
 
     try {
       const res = await api.get(`/pedidos/${pedidoIdStr}`);
       setSelectedPedidoInfo(res.data);
-      setPagoInicialData((prev) => ({
-        ...prev,
-        monto: String(res.data.total || '')
-      }));
+      setPagosIniciales([
+        {
+          id: Date.now(),
+          monto: String(res.data.total || ''),
+          metodo_pago: 'EFECTIVO',
+          referencia_pago: ''
+        }
+      ]);
     } catch (err) {
       toast.error('Error al cargar datos del pedido seleccionado');
     }
+  };
+
+  const handleToggleConPagoInicial = (val) => {
+    const nextVal = typeof val === 'boolean' ? val : !conPagoInicial;
+    setConPagoInicial(nextVal);
+    if (nextVal && selectedPedidoInfo) {
+      if (pagosIniciales.length === 0 || !pagosIniciales[0].monto) {
+        setPagosIniciales([
+          {
+            id: Date.now(),
+            monto: String(selectedPedidoInfo.total || ''),
+            metodo_pago: 'EFECTIVO',
+            referencia_pago: ''
+          }
+        ]);
+      }
+    }
+  };
+
+  const handleAddPagoInicialRow = () => {
+    const totalPedido = parseFloat(selectedPedidoInfo?.total || 0);
+    const restante = Math.max(0, totalPedido - totalPagosIniciales);
+    setPagosIniciales((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        monto: restante > 0 ? (Math.round(restante * 100) / 100).toFixed(2) : '',
+        metodo_pago: 'TRANSFERENCIA',
+        referencia_pago: ''
+      }
+    ]);
+  };
+
+  const handleRemovePagoInicialRow = (idToRemove) => {
+    setPagosIniciales((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((p) => p.id !== idToRemove);
+    });
+  };
+
+  const handleUpdatePagoInicialRow = (id, field, value) => {
+    setPagosIniciales((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p;
+        if (field === 'monto') {
+          let sanitized = value.replace(/[^0-9.]/g, '');
+          const parts = sanitized.split('.');
+          if (parts.length > 2) {
+            sanitized = parts[0] + '.' + parts.slice(1).join('');
+          }
+          return { ...p, monto: sanitized };
+        }
+        return { ...p, [field]: value };
+      })
+    );
   };
 
   // Enviar formulario de generación de venta
@@ -255,15 +329,28 @@ export default function VentasPage() {
     }
 
     if (conPagoInicial) {
-      const montoNum = parseFloat(pagoInicialData.monto);
       const totalPedido = parseFloat(selectedPedidoInfo?.total || 0);
-
-      if (isNaN(montoNum) || montoNum <= 0) {
-        toast.error('El monto del pago inicial debe ser mayor a 0');
+      if (pagosIniciales.length === 0) {
+        toast.error('Agrega al menos un método de pago inicial');
         return;
       }
-      if (montoNum > totalPedido) {
-        toast.error(`El pago inicial no puede ser mayor al total de la venta (Q${totalPedido.toFixed(2)})`);
+      for (let i = 0; i < pagosIniciales.length; i++) {
+        const p = pagosIniciales[i];
+        const montoNum = parseFloat(p.monto);
+        if (isNaN(montoNum) || montoNum <= 0) {
+          toast.error(`El monto del pago #${i + 1} debe ser mayor a 0`);
+          return;
+        }
+        if (p.metodo_pago === 'TRANSFERENCIA' && !p.referencia_pago?.trim()) {
+          toast.error(`Ingresa la referencia o comprobante para el pago #${i + 1} por transferencia`);
+          return;
+        }
+      }
+
+      if (totalPagosIniciales > totalPedido + 0.01) {
+        toast.error(
+          `La suma de pagos (Q${totalPagosIniciales.toFixed(2)}) supera el total de la venta (Q${totalPedido.toFixed(2)})`
+        );
         return;
       }
     }
@@ -271,16 +358,17 @@ export default function VentasPage() {
     setSubmittingVenta(true);
     try {
       const payload = {
-        id_pedido: parseInt(selectedPedidoId, 10),
-        numero_factura: facturaSugerida?.trim() || null
+        id_pedido: parseInt(selectedPedidoId, 10)
       };
 
-      if (conPagoInicial && parseFloat(pagoInicialData.monto) > 0) {
-        payload.pago_inicial = {
-          monto: parseFloat(pagoInicialData.monto),
-          metodo_pago: pagoInicialData.metodo_pago,
-          referencia_pago: pagoInicialData.referencia_pago?.trim() || null
-        };
+      if (conPagoInicial && pagosIniciales.length > 0) {
+        payload.pagos_iniciales = pagosIniciales
+          .filter((p) => parseFloat(p.monto) > 0)
+          .map((p) => ({
+            monto: parseFloat(p.monto),
+            metodo_pago: p.metodo_pago,
+            referencia_pago: p.metodo_pago === 'TRANSFERENCIA' ? (p.referencia_pago?.trim() || null) : null
+          }));
       }
 
       const res = await api.post('/ventas', payload);
@@ -355,8 +443,13 @@ export default function VentasPage() {
       return;
     }
 
-    if (montoNum > saldoPend) {
+    if (montoNum > saldoPend + 0.001) {
       toast.error(`El pago no puede superar el saldo pendiente (RN09): Q${saldoPend.toFixed(2)}`);
+      return;
+    }
+
+    if (pagoForm.metodo_pago === 'TRANSFERENCIA' && !pagoForm.referencia_pago?.trim()) {
+      toast.error('Ingresa la referencia o comprobante para transferencia bancaria');
       return;
     }
 
@@ -367,7 +460,7 @@ export default function VentasPage() {
         numero_recibo: pagoForm.numero_recibo?.trim() || null,
         monto: montoNum,
         metodo_pago: pagoForm.metodo_pago,
-        referencia_pago: pagoForm.referencia_pago?.trim() || null
+        referencia_pago: pagoForm.metodo_pago === 'TRANSFERENCIA' ? (pagoForm.referencia_pago?.trim() || null) : null
       };
 
       const res = await api.post('/pagos', payload);
@@ -762,28 +855,32 @@ export default function VentasPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Desde:</span>
-                <input
-                  type="date"
-                  className="form-control"
-                  style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                <DatePicker
                   value={filterFechaDesde}
-                  onChange={(e) => {
-                    setFilterFechaDesde(e.target.value);
+                  onChange={(val) => {
+                    if (val && val > hoyStr) return;
+                    setFilterFechaDesde(val);
                     setPageVentas(1);
                   }}
+                  placeholder="Desde"
+                  width="135px"
+                  max={filterFechaHasta || hoyStr}
                 />
                 <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Hasta:</span>
-                <input
-                  type="date"
-                  className="form-control"
-                  style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                <DatePicker
                   value={filterFechaHasta}
-                  onChange={(e) => {
-                    setFilterFechaHasta(e.target.value);
+                  onChange={(val) => {
+                    if (val && val > hoyStr) return;
+                    setFilterFechaHasta(val);
                     setPageVentas(1);
                   }}
+                  placeholder="Hasta"
+                  width="135px"
+                  min={filterFechaDesde || undefined}
+                  max={hoyStr}
+                  align="right"
                 />
               </div>
             </div>
@@ -837,28 +934,32 @@ export default function VentasPage() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Desde:</span>
-                <input
-                  type="date"
-                  className="form-control"
-                  style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                <DatePicker
                   value={filterFechaDesde}
-                  onChange={(e) => {
-                    setFilterFechaDesde(e.target.value);
+                  onChange={(val) => {
+                    if (val && val > hoyStr) return;
+                    setFilterFechaDesde(val);
                     setPagePagos(1);
                   }}
+                  placeholder="Desde"
+                  width="135px"
+                  max={filterFechaHasta || hoyStr}
                 />
                 <span style={{ fontSize: '0.78rem', color: 'var(--toy-muted)', fontWeight: 700 }}>Hasta:</span>
-                <input
-                  type="date"
-                  className="form-control"
-                  style={{ width: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                <DatePicker
                   value={filterFechaHasta}
-                  onChange={(e) => {
-                    setFilterFechaHasta(e.target.value);
+                  onChange={(val) => {
+                    if (val && val > hoyStr) return;
+                    setFilterFechaHasta(val);
                     setPagePagos(1);
                   }}
+                  placeholder="Hasta"
+                  width="135px"
+                  min={filterFechaDesde || undefined}
+                  max={hoyStr}
+                  align="right"
                 />
               </div>
             </div>
@@ -886,33 +987,21 @@ export default function VentasPage() {
       <Modal
         isOpen={facturarModalOpen}
         onClose={() => setFacturarModalOpen(false)}
-        title="Generar Factura de Venta desde Pedido Aprobado"
+        title="Generar Factura"
         size="large"
       >
         <form onSubmit={handleSubmitFactura} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
-            <FormField label="Número de Factura" required>
-              <input
-                type="text"
-                className="form-control"
-                value={facturaSugerida}
-                onChange={(e) => setFacturaSugerida(e.target.value)}
-                placeholder="Ej. FAC-0001 (Automático)"
-              />
-            </FormField>
-
-            <FormField label="Pedido Aprobado a Facturar" required>
-              <SearchableSelect
-                placeholder="Selecciona un pedido aprobado..."
-                value={selectedPedidoId}
-                onChange={handleSelectPedidoChange}
-                options={pedidosAprobadosList.map((p) => ({
-                  value: p.id_pedido,
-                  label: `${p.numero_pedido} - ${p.cliente_nombre} (Total: Q${parseFloat(p.total).toFixed(2)})`
-                }))}
-              />
-            </FormField>
-          </div>
+          <FormField label="Pedido Aprobado a Facturar" required>
+            <SearchableSelect
+              placeholder="Selecciona un pedido aprobado..."
+              value={selectedPedidoId}
+              onChange={handleSelectPedidoChange}
+              options={pedidosAprobadosList.map((p) => ({
+                value: p.id_pedido,
+                label: `${p.numero_pedido} - ${p.cliente_nombre} (Total: Q${parseFloat(p.total).toFixed(2)})`
+              }))}
+            />
+          </FormField>
 
           {/* Resumen del Pedido Seleccionado */}
           {selectedPedidoInfo && (
@@ -974,12 +1063,12 @@ export default function VentasPage() {
                 gap: '0.85rem'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <ToySwitch
                     id="switch-pago-inicial"
                     checked={conPagoInicial}
-                    onChange={setConPagoInicial}
+                    onChange={handleToggleConPagoInicial}
                   />
                   <label
                     htmlFor="switch-pago-inicial"
@@ -989,48 +1078,148 @@ export default function VentasPage() {
                   </label>
                 </div>
                 {conPagoInicial && (
-                  <span style={{ fontSize: '0.78rem', color: 'var(--toy-green-dark)', fontWeight: 700 }}>
-                    {parseFloat(pagoInicialData.monto) >= parseFloat(selectedPedidoInfo.total)
+                  <span
+                    style={{
+                      fontSize: '0.78rem',
+                      color: totalPagosIniciales >= parseFloat(selectedPedidoInfo.total) ? 'var(--toy-green-dark)' : 'var(--toy-orange-dark)',
+                      fontWeight: 700
+                    }}
+                  >
+                    {totalPagosIniciales >= parseFloat(selectedPedidoInfo.total)
                       ? '✓ Venta quedará COMPLETADA y saldrá de inventario'
-                      : 'Abono parcial al crédito'}
+                      : `Abono parcial (Resta: Q${Math.max(0, parseFloat(selectedPedidoInfo.total) - totalPagosIniciales).toFixed(2)})`}
                   </span>
                 )}
               </div>
 
               {conPagoInicial && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.85rem' }}>
-                  <FormField label="Monto a Cobrar" required>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-control"
-                      value={pagoInicialData.monto}
-                      onChange={(e) => setPagoInicialData({ ...pagoInicialData, monto: e.target.value })}
-                    />
-                  </FormField>
-
-                  <FormField label="Método de Pago" required>
-                    <select
-                      className="form-control"
-                      value={pagoInicialData.metodo_pago}
-                      onChange={(e) => setPagoInicialData({ ...pagoInicialData, metodo_pago: e.target.value })}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+                      Desglose de Formas de Pago
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={handleAddPagoInicialRow}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}
                     >
-                      <option value="EFECTIVO">Efectivo</option>
-                      <option value="TARJETA_DEBITO">Tarjeta de Débito</option>
-                      <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
-                      <option value="TRANSFERENCIA">Transferencia Bancaria</option>
-                    </select>
-                  </FormField>
+                      <Plus size={14} />
+                      <span>Agregar Otro Pago</span>
+                    </button>
+                  </div>
 
-                  <FormField label="Referencia / No. Comprobante">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Ej. POS-9821 o Transf-442"
-                      value={pagoInicialData.referencia_pago}
-                      onChange={(e) => setPagoInicialData({ ...pagoInicialData, referencia_pago: e.target.value })}
-                    />
-                  </FormField>
+                  {pagosIniciales.map((pagoRow, idx) => {
+                    const isTransferencia = pagoRow.metodo_pago === 'TRANSFERENCIA';
+                    return (
+                      <div
+                        key={pagoRow.id}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: isTransferencia ? '1.4fr 1.1fr 1.4fr auto' : '1.5fr 1.5fr auto',
+                          gap: '0.75rem',
+                          alignItems: 'flex-end',
+                          backgroundColor: '#FFFFFF',
+                          padding: '0.75rem',
+                          borderRadius: '12px',
+                          border: '1px solid var(--toy-border-light)'
+                        }}
+                      >
+                        <FormField label={`Método #${idx + 1}`} required>
+                          <SearchableSelect
+                            value={pagoRow.metodo_pago}
+                            onChange={(val) => handleUpdatePagoInicialRow(pagoRow.id, 'metodo_pago', val)}
+                            options={METODOS_PAGO_SELECT}
+                            placeholder="Selecciona método..."
+                          />
+                        </FormField>
+
+                        <FormField label="Monto (Q)" required>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="form-control"
+                            placeholder="0.00"
+                            value={pagoRow.monto}
+                            onChange={(e) => handleUpdatePagoInicialRow(pagoRow.id, 'monto', e.target.value)}
+                          />
+                        </FormField>
+
+                        {isTransferencia && (
+                          <FormField label="No. Comprobante / Transf." required>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Ej. TRANSF-0912"
+                              value={pagoRow.referencia_pago}
+                              onChange={(e) => handleUpdatePagoInicialRow(pagoRow.id, 'referencia_pago', e.target.value)}
+                            />
+                          </FormField>
+                        )}
+
+                        {pagosIniciales.length > 1 && (
+                          <button
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={() => handleRemovePagoInicialRow(pagoRow.id)}
+                            title="Eliminar este pago"
+                            style={{
+                              height: '42px',
+                              width: '42px',
+                              padding: 0,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              boxShadow: '0 3px 0 #DC2626'
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Resumen de Pago */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.7rem 0.9rem',
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '10px',
+                      border: '1.5px solid var(--toy-border)',
+                      fontSize: '0.85rem',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <div>
+                      <span>Total Pedido: </span>
+                      <strong style={{ color: 'var(--toy-ink)' }}>Q{parseFloat(selectedPedidoInfo.total).toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      <span>Cobrado en este acto: </span>
+                      <strong
+                        style={{
+                          color:
+                            totalPagosIniciales > parseFloat(selectedPedidoInfo.total) + 0.001
+                              ? '#DC2626'
+                              : 'var(--toy-green-dark)'
+                        }}
+                      >
+                        Q{totalPagosIniciales.toFixed(2)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Saldo Restante: </span>
+                      <strong style={{ color: 'var(--toy-orange-dark)' }}>
+                        Q{Math.max(0, parseFloat(selectedPedidoInfo.total) - totalPagosIniciales).toFixed(2)}
+                      </strong>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1287,38 +1476,40 @@ export default function VentasPage() {
 
           <FormField label="Monto a Pagar (Q)" required>
             <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              max={selectedVentaDetail?.saldo_pendiente || 999999}
+              type="text"
+              inputMode="decimal"
               className="form-control"
+              placeholder="0.00"
               value={pagoForm.monto}
-              onChange={(e) => setPagoForm({ ...pagoForm, monto: e.target.value })}
+              onChange={(e) => {
+                let val = e.target.value.replace(/[^0-9.]/g, '');
+                const parts = val.split('.');
+                if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+                setPagoForm({ ...pagoForm, monto: val });
+              }}
             />
           </FormField>
 
           <FormField label="Método de Pago" required>
-            <select
-              className="form-control"
+            <SearchableSelect
               value={pagoForm.metodo_pago}
-              onChange={(e) => setPagoForm({ ...pagoForm, metodo_pago: e.target.value })}
-            >
-              <option value="EFECTIVO">Efectivo</option>
-              <option value="TARJETA_DEBITO">Tarjeta de Débito</option>
-              <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
-              <option value="TRANSFERENCIA">Transferencia Bancaria</option>
-            </select>
-          </FormField>
-
-          <FormField label="Referencia / No. Autorización">
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Opcional: No. de cheque, boleta o autorización"
-              value={pagoForm.referencia_pago}
-              onChange={(e) => setPagoForm({ ...pagoForm, referencia_pago: e.target.value })}
+              onChange={(val) => setPagoForm({ ...pagoForm, metodo_pago: val })}
+              options={METODOS_PAGO_SELECT}
+              placeholder="Seleccionar método de pago..."
             />
           </FormField>
+
+          {pagoForm.metodo_pago === 'TRANSFERENCIA' && (
+            <FormField label="No. Comprobante / Transferencia" required>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Ej. Boleta o No. de autorización bancaria"
+                value={pagoForm.referencia_pago}
+                onChange={(e) => setPagoForm({ ...pagoForm, referencia_pago: e.target.value })}
+              />
+            </FormField>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
             <button
