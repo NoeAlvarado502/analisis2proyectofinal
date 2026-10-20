@@ -16,6 +16,11 @@ import { marcasRouter } from './modules/productos/marcas.routes.js';
 import { proveedoresRouter } from './modules/proveedores/proveedores.routes.js';
 import { comprasRouter } from './modules/compras/compras.routes.js';
 import { inventarioRouter } from './modules/inventario/inventario.routes.js';
+import { pedidosRouter } from './modules/pedidos/pedidos.routes.js';
+import { ventasRouter } from './modules/ventas/ventas.routes.js';
+import { pagosRouter } from './modules/pagos/pagos.routes.js';
+import { auditoriaRouter } from './modules/auditoria/auditoria.routes.js';
+import { reportesRouter } from './modules/reportes/reportes.routes.js';
 
 export const app = express();
 
@@ -55,6 +60,11 @@ app.use('/api/marcas', marcasRouter);
 app.use('/api/proveedores', proveedoresRouter);
 app.use('/api/compras', comprasRouter);
 app.use('/api/inventario', inventarioRouter);
+app.use('/api/pedidos', pedidosRouter);
+app.use('/api/ventas', ventasRouter);
+app.use('/api/pagos', pagosRouter);
+app.use('/api/auditoria', auditoriaRouter);
+app.use('/api/reportes', reportesRouter);
 
 // Ruta de prueba para permisos en tests
 if (process.env.NODE_ENV === 'test') {

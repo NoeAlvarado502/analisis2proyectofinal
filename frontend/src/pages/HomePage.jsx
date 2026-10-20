@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Clock, ShieldAlert } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { MENU_ITEMS } from '../components/Sidebar';
@@ -10,9 +10,11 @@ export default function HomePage() {
   const navigate = useNavigate();
 
   const [alertasActivas, setAlertasActivas] = useState(0);
+  const [pedidosPendientes, setPedidosPendientes] = useState(0);
 
-  // Consulta de alertas críticas activas en inventario
+  // Consulta de indicadores del dashboard y alertas
   useEffect(() => {
+    // 1. Alertas de inventario
     if (can('inventario.consultar')) {
       api.get('/inventario/alertas')
         .then((res) => {
@@ -24,6 +26,17 @@ export default function HomePage() {
           console.warn('No se pudieron consultar alertas en Home:', err);
         });
     }
+
+    // 2. Dashboard consolidado (pedidos pendientes de aprobación)
+    api.get('/reportes/dashboard')
+      .then((res) => {
+        if (res?.data?.indicadores?.pedidos_pendientes_aprobacion !== undefined) {
+          setPedidosPendientes(parseInt(res.data.indicadores.pedidos_pendientes_aprobacion, 10) || 0);
+        }
+      })
+      .catch((err) => {
+        console.warn('No se pudieron consultar indicadores de dashboard:', err);
+      });
   }, [can]);
 
   // Filtrar módulos del menú excluyendo /inicio
@@ -33,6 +46,38 @@ export default function HomePage() {
 
   const getModuleTheming = (path) => {
     switch (path) {
+      case '/pedidos':
+        return {
+          bg: 'rgba(25, 168, 232, 0.12)',
+          color: 'var(--toy-deep-blue)',
+          border: 'rgba(25, 168, 232, 0.28)',
+          badge: 'badge-primary',
+          badgeText: 'Ventas y Mayoreo'
+        };
+      case '/ventas':
+        return {
+          bg: 'rgba(116, 201, 91, 0.15)',
+          color: 'var(--toy-green-dark)',
+          border: 'rgba(116, 201, 91, 0.3)',
+          badge: 'badge-success',
+          badgeText: 'Cobranza'
+        };
+      case '/reportes':
+        return {
+          bg: 'rgba(131, 102, 217, 0.15)',
+          color: 'var(--toy-purple-dark)',
+          border: 'rgba(131, 102, 217, 0.3)',
+          badge: 'badge-purple',
+          badgeText: 'Estadísticas'
+        };
+      case '/auditoria':
+        return {
+          bg: 'rgba(15, 118, 110, 0.12)',
+          color: '#0F766E',
+          border: 'rgba(15, 118, 110, 0.28)',
+          badge: 'badge-info',
+          badgeText: 'Trazabilidad'
+        };
       case '/productos':
         return {
           bg: 'rgba(25, 168, 232, 0.12)',
@@ -102,7 +147,74 @@ export default function HomePage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Banner de Alerta Rápida de Inventario Crítico */}
+      {/* Banner 1: Alerta para Supervisor de Pedidos Pendientes de Aprobación */}
+      {pedidosPendientes > 0 && can('pedidos.autorizar_descuento') && (
+        <div
+          onClick={() => navigate('/pedidos')}
+          style={{
+            backgroundColor: '#FFFFFF',
+            border: '2px solid var(--toy-orange)',
+            borderRadius: '20px',
+            padding: '1rem 1.35rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 8px 24px rgba(255, 157, 46, 0.18)',
+            transition: 'transform 0.16s ease, box-shadow 0.16s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 12px 28px rgba(255, 157, 46, 0.25)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'none';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(255, 157, 46, 0.18)';
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.95rem' }}>
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '14px',
+                backgroundColor: 'rgba(255, 157, 46, 0.18)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Clock size={24} color="var(--toy-orange-dark)" strokeWidth={2.4} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 800, color: 'var(--toy-ink)' }}>
+                ¡Atención Supervisor! Hay {pedidosPendientes} pedido{pedidosPendientes > 1 ? 's' : ''} pendiente{pedidosPendientes > 1 ? 's' : ''} de autorización
+              </h4>
+              <p style={{ margin: '0.15rem 0 0', fontSize: '0.84rem', color: 'var(--toy-muted)', fontWeight: 600 }}>
+                Exceden el descuento máximo sin autorización (10%). Haz clic para revisar y autorizar o cancelar.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-warning btn-sm"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              flexShrink: 0,
+              backgroundColor: 'var(--toy-orange)',
+              color: '#FFFFFF'
+            }}
+          >
+            <span>Revisar Pedidos</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Banner 2: Alerta de Inventario Crítico */}
       {alertasActivas > 0 && (
         <div
           onClick={() => navigate('/inventario')}

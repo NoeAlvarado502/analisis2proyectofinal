@@ -11,6 +11,10 @@ import ProductosPage from '../pages/ProductosPage';
 import ProveedoresPage from '../pages/ProveedoresPage';
 import ComprasPage from '../pages/ComprasPage';
 import InventarioPage from '../pages/InventarioPage';
+import PedidosPage from '../pages/PedidosPage';
+import VentasPage from '../pages/VentasPage';
+import AuditoriaPage from '../pages/AuditoriaPage';
+import ReportesPage from '../pages/ReportesPage';
 import { useAuth } from '../auth/AuthContext';
 
 export default function AppRoutes() {
@@ -31,42 +35,26 @@ export default function AppRoutes() {
 
         {/* Protected Routes by Permission */}
         <Route
-          path="/usuarios"
+          path="/pedidos"
           element={
-            <ProtectedRoute requiredPermission="usuarios.gestionar">
-              <UsuariosPage />
+            <ProtectedRoute requiredPermission={['pedidos.crear', 'pedidos.autorizar_descuento', 'ventas.registrar', 'reportes.consultar']}>
+              <PedidosPage />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/roles"
+          path="/ventas"
           element={
-            <ProtectedRoute requiredPermission="roles.gestionar">
-              <RolesPage />
+            <ProtectedRoute requiredPermission={['ventas.registrar', 'pagos.registrar', 'reportes.consultar']}>
+              <VentasPage />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/clientes"
+          path="/inventario"
           element={
-            <ProtectedRoute requiredPermission="clientes.consultar">
-              <ClientesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/productos"
-          element={
-            <ProtectedRoute requiredPermission="productos.consultar">
-              <ProductosPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/proveedores"
-          element={
-            <ProtectedRoute requiredPermission={['proveedores.gestionar', 'compras.registrar']}>
-              <ProveedoresPage />
+            <ProtectedRoute requiredPermission="inventario.consultar">
+              <InventarioPage />
             </ProtectedRoute>
           }
         />
@@ -79,10 +67,58 @@ export default function AppRoutes() {
           }
         />
         <Route
-          path="/inventario"
+          path="/productos"
           element={
-            <ProtectedRoute requiredPermission="inventario.consultar">
-              <InventarioPage />
+            <ProtectedRoute requiredPermission="productos.consultar">
+              <ProductosPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/clientes"
+          element={
+            <ProtectedRoute requiredPermission="clientes.consultar">
+              <ClientesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/proveedores"
+          element={
+            <ProtectedRoute requiredPermission={['proveedores.gestionar', 'compras.registrar']}>
+              <ProveedoresPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reportes"
+          element={
+            <ProtectedRoute requiredPermission="reportes.consultar">
+              <ReportesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditoria"
+          element={
+            <ProtectedRoute requiredPermission="auditoria.consultar">
+              <AuditoriaPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/usuarios"
+          element={
+            <ProtectedRoute requiredPermission="usuarios.gestionar">
+              <UsuariosPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/roles"
+          element={
+            <ProtectedRoute requiredPermission="roles.gestionar">
+              <RolesPage />
             </ProtectedRoute>
           }
         />
