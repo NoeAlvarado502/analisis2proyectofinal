@@ -1256,3 +1256,91 @@ code {
   color: var(--toy-muted);
   font-weight: 700;
 }
+
+/* ==========================================================================
+   ESTILOS GLOBALES DE IMPRESIÓN Y PDF (@media print)
+   Impresión formal y limpia en papel blanco: sin fondos, sin patrones,
+   sin márgenes innecesarios ni barras laterales.
+   ========================================================================== */
+@media print {
+  @page {
+    size: landscape;
+    margin: 8mm 10mm;
+  }
+
+  /* Eliminar sombras, texturas y fondos con patrones en cualquier elemento */
+  *,
+  *::before,
+  *::after {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Fondo 100% papel blanco limpio para impresión ejecutiva / formal */
+  html,
+  body {
+    background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    background-image: none !important;
+    color: #111827 !important;
+    font-size: 8pt !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Los contenedores del layout deben fluir de forma continua sin scrollbars ni cortes de página */
+  #root,
+  .app-layout,
+  .main-wrapper,
+  .page-content,
+  main,
+  .card,
+  .report-card {
+    display: block !important;
+    position: static !important;
+    background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Ocultar toda la interfaz de usuario, navegación, barras y botones */
+  .sidebar,
+  .top-navbar,
+  .navbar,
+  .topbar,
+  header,
+  aside,
+  .no-print,
+  button,
+  .btn,
+  .search-input-wrapper,
+  .toast-container {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+

@@ -93,7 +93,7 @@ export default function AppRoutes() {
         <Route
           path="/reportes"
           element={
-            <ProtectedRoute requiredPermission="reportes.consultar">
+            <ProtectedRoute requiredPermission={['reportes.consultar', 'inventario.consultar']}>
               <ReportesPage />
             </ProtectedRoute>
           }

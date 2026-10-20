@@ -25,3 +25,17 @@ reportesRouter.get(
   '/dashboard',
   ReportesController.dashboard
 );
+
+// Informe 1: Kardex Físico y Trazabilidad
+reportesRouter.get(
+  '/kardex',
+  requirePermission('reportes.consultar', 'inventario.consultar'),
+  ReportesController.kardex
+);
+
+// Informe 2: Valoración Total de Inventario
+reportesRouter.get(
+  '/valoracion-inventario',
+  requirePermission('reportes.consultar', 'inventario.consultar'),
+  ReportesController.valoracionInventario
+);

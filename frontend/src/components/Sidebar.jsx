@@ -70,8 +70,8 @@ export const MENU_ITEMS = [
     path: '/reportes',
     label: 'Reportes',
     IconComponent: TrendingUp,
-    permission: 'reportes.consultar',
-    description: 'Analítica de ventas, cobranza e inventario'
+    permission: ['reportes.consultar', 'inventario.consultar'],
+    description: 'Informes de inventario, kardex y valoración'
   },
   {
     path: '/auditoria',
