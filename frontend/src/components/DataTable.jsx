@@ -127,36 +127,57 @@ export default function DataTable({
       </div>
 
       {/* Pagination Footer */}
-      {pagination && pagination.totalPages > 1 && (
-        <div
-          className="table-pagination"
-          style={embedded ? { borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px', flexShrink: 0 } : undefined}
-        >
-          <span>
-            Página {pagination.page} de {pagination.totalPages} ({pagination.totalRecords} total)
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              disabled={pagination.page <= 1 || loading}
-              onClick={() => onPageChange(pagination.page - 1)}
-            >
-              <ChevronLeft size={16} strokeWidth={2.2} />
-              <span>Anterior</span>
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              disabled={pagination.page >= pagination.totalPages || loading}
-              onClick={() => onPageChange(pagination.page + 1)}
-            >
-              <span>Siguiente</span>
-              <ChevronRight size={16} strokeWidth={2.2} />
-            </button>
+      {pagination && pagination.totalPages > 1 && (() => {
+        const currentPage = pagination.page ?? pagination.currentPage ?? 1;
+        return (
+          <div
+            className="table-pagination"
+            style={embedded ? { borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px', flexShrink: 0 } : undefined}
+          >
+            <span>
+              Página {currentPage} de {pagination.totalPages} ({pagination.totalRecords} total)
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={currentPage <= 1 || loading}
+                onClick={() => onPageChange(currentPage - 1)}
+                title="Página anterior"
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '10px'
+                }}
+              >
+                <ChevronLeft size={18} strokeWidth={2.4} />
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={currentPage >= pagination.totalPages || loading}
+                onClick={() => onPageChange(currentPage + 1)}
+                title="Página siguiente"
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '10px'
+                }}
+              >
+                <ChevronRight size={18} strokeWidth={2.4} />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <style>{`
         @keyframes spin {

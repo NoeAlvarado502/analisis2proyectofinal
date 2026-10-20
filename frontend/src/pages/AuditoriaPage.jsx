@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   History,
   Search,
@@ -17,6 +17,141 @@ import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import PageCard from '../components/PageCard';
 import DatePicker from '../components/DatePicker';
+
+const FIELD_LABELS = {
+  nombre: 'Nombre',
+  id_categoria: 'ID Categoría',
+  id_marca: 'ID Marca',
+  stock_minimo: 'Stock Mínimo',
+  stock_actual: 'Stock Actual',
+  codigo_sku: 'Código SKU',
+  edad_minima_meses: 'Edad Mínima (Meses)',
+  advertencia_seguridad: 'Advertencia',
+  activo: 'Estado Activo',
+  razon_social: 'Razón Social',
+  identificacion_fiscal: 'NIT / Identificación',
+  contacto_nombre: 'Contacto',
+  telefono: 'Teléfono',
+  email: 'Correo Electrónico',
+  direccion: 'Dirección',
+  valor: 'Valor Configurado',
+  clave: 'Parámetro',
+  monto: 'Monto',
+  metodo: 'Método de Pago',
+  id_venta: 'ID Venta',
+  id_pedido: 'ID Pedido',
+  subtotal: 'Subtotal',
+  descuento: 'Descuento',
+  total: 'Total',
+  saldo_pendiente: 'Saldo Pendiente',
+  precio_unitario: 'Precio Unitario',
+  precio_escala: 'Precio Escala',
+  cantidad: 'Cantidad',
+  cantidad_minima: 'Cantidad Mínima'
+};
+
+function formatFieldValue(key, val) {
+  if (val === null || val === undefined) {
+    return <span style={{ color: 'var(--toy-muted)', fontStyle: 'italic' }}>Sin valor</span>;
+  }
+  if (key === 'activo') {
+    return Number(val) === 1 ? (
+      <span className="badge badge-success" style={{ fontSize: '0.74rem' }}>Activo</span>
+    ) : (
+      <span className="badge badge-danger" style={{ fontSize: '0.74rem' }}>Inactivo</span>
+    );
+  }
+  if (typeof val === 'boolean') {
+    return val ? (
+      <span className="badge badge-success" style={{ fontSize: '0.74rem' }}>Sí</span>
+    ) : (
+      <span className="badge badge-secondary" style={{ fontSize: '0.74rem' }}>No</span>
+    );
+  }
+  if (typeof val === 'number' && (key.includes('monto') || key.includes('precio') || key.includes('subtotal') || key.includes('total') || key.includes('saldo') || key.includes('descuento'))) {
+    return <strong style={{ color: 'var(--toy-deep-blue)' }}>Q{parseFloat(val).toFixed(2)}</strong>;
+  }
+  if (typeof val === 'object') {
+    return <code style={{ fontSize: '0.78rem' }}>{JSON.stringify(val)}</code>;
+  }
+  return <span style={{ fontWeight: 600, color: 'var(--toy-ink)' }}>{String(val)}</span>;
+}
+
+function renderFriendlyState(raw, isNew = false) {
+  let parsed = raw;
+  if (typeof raw === 'string') {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = raw;
+    }
+  }
+
+  if (!parsed || (typeof parsed === 'object' && Object.keys(parsed).length === 0)) {
+    return (
+      <div
+        style={{
+          padding: '1.5rem 1rem',
+          textAlign: 'center',
+          color: 'var(--toy-muted)',
+          fontSize: '0.84rem',
+          backgroundColor: isNew ? 'rgba(116, 201, 91, 0.04)' : '#FBF9F4',
+          borderRadius: '12px',
+          border: '1.5px dashed var(--toy-border)'
+        }}
+      >
+        <span style={{ fontWeight: 600 }}>
+          {isNew ? 'Registro eliminado o sin modificaciones posteriores' : 'Registro nuevo (No existía estado anterior)'}
+        </span>
+      </div>
+    );
+  }
+
+  if (typeof parsed !== 'object') {
+    return (
+      <div style={{ padding: '0.85rem', backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid var(--toy-border-light)' }}>
+        <span style={{ fontWeight: 600 }}>{String(parsed)}</span>
+      </div>
+    );
+  }
+
+  const entries = Object.entries(parsed);
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.45rem',
+        maxHeight: '280px',
+        overflowY: 'auto',
+        paddingRight: '4px'
+      }}
+    >
+      {entries.map(([k, v]) => {
+        const label = FIELD_LABELS[k] || k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        return (
+          <div
+            key={k}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '0.6rem 0.85rem',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '10px',
+              border: isNew ? '1.5px solid rgba(116, 201, 91, 0.35)' : '1px solid var(--toy-border-light)',
+              fontSize: '0.82rem',
+              gap: '0.75rem'
+            }}
+          >
+            <span style={{ color: 'var(--toy-muted)', fontWeight: 700 }}>{label}:</span>
+            <div>{formatFieldValue(k, v)}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function AuditoriaPage() {
   const toast = useToast();
@@ -194,10 +329,7 @@ export default function AuditoriaPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <PageCard
-        title="Bitácora de Auditoría del Sistema"
-        subtitle="Registro histórico inmutable de trazabilidad de operaciones, accesos y transacciones (Triggers SQL)"
-      >
+      <PageCard title="Auditoría">
         {/* Barra de Filtros */}
         <div
           style={{
@@ -215,8 +347,11 @@ export default function AuditoriaPage() {
             <div style={{ width: '280px' }}>
               <SearchInput
                 value={q}
-                onChange={setQ}
-                placeholder="Buscar por registro o usuario..."
+                onChange={(val) => {
+                  setQ(val);
+                  setPage(1);
+                }}
+                placeholder=""
               />
             </div>
 
@@ -224,7 +359,10 @@ export default function AuditoriaPage() {
               title="Filtrar por Módulo"
               buttonTitle="Módulo"
               value={filterModulo}
-              onChange={setFilterModulo}
+              onChange={(val) => {
+                setFilterModulo(val);
+                setPage(1);
+              }}
               options={moduloOptions}
             />
 
@@ -233,7 +371,10 @@ export default function AuditoriaPage() {
                 title="Filtrar por Acción"
                 buttonTitle="Acción"
                 value={filterAccion}
-                onChange={setFilterAccion}
+                onChange={(val) => {
+                  setFilterAccion(val);
+                  setPage(1);
+                }}
                 options={accionOptions}
               />
             )}
@@ -276,6 +417,7 @@ export default function AuditoriaPage() {
           loading={loading}
           emptyMessage="No se encontraron eventos de auditoría registrados con los filtros aplicados."
           pagination={{
+            page,
             currentPage: page,
             totalPages,
             totalRecords
@@ -333,74 +475,39 @@ export default function AuditoriaPage() {
 
             {/* Comparativa de Cambios */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                  <span className="badge badge-secondary" style={{ fontSize: '0.72rem' }}>Estado Anterior</span>
+              <div
+                style={{
+                  backgroundColor: '#FAF8F5',
+                  border: '1.5px solid var(--toy-border)',
+                  borderRadius: '14px',
+                  padding: '0.85rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.65rem'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span className="badge badge-secondary" style={{ fontSize: '0.74rem' }}>Estado Anterior</span>
                 </div>
-                <pre
-                  style={{
-                    backgroundColor: '#F8F5EE',
-                    border: '1.5px solid var(--toy-border)',
-                    borderRadius: '12px',
-                    padding: '0.85rem',
-                    fontSize: '0.82rem',
-                    color: 'var(--toy-ink)',
-                    overflowX: 'auto',
-                    minHeight: '120px',
-                    maxHeight: '260px'
-                  }}
-                >
-                  {selectedRecord.detalle_anterior
-                    ? typeof selectedRecord.detalle_anterior === 'string'
-                      ? selectedRecord.detalle_anterior
-                      : JSON.stringify(selectedRecord.detalle_anterior, null, 2)
-                    : '// No aplica (Registro Nuevo / Creación)'}
-                </pre>
+                {renderFriendlyState(selectedRecord.detalle_anterior, false)}
               </div>
 
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                  <span className="badge badge-success" style={{ fontSize: '0.72rem' }}>Estado Nuevo</span>
+              <div
+                style={{
+                  backgroundColor: '#FAFCF8',
+                  border: '1.5px solid rgba(116, 201, 91, 0.4)',
+                  borderRadius: '14px',
+                  padding: '0.85rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.65rem'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span className="badge badge-success" style={{ fontSize: '0.74rem' }}>Estado Nuevo</span>
                 </div>
-                <pre
-                  style={{
-                    backgroundColor: 'rgba(116, 201, 91, 0.08)',
-                    border: '1.5px solid var(--toy-green)',
-                    borderRadius: '12px',
-                    padding: '0.85rem',
-                    fontSize: '0.82rem',
-                    color: 'var(--toy-ink)',
-                    overflowX: 'auto',
-                    minHeight: '120px',
-                    maxHeight: '260px'
-                  }}
-                >
-                  {selectedRecord.detalle_nuevo
-                    ? typeof selectedRecord.detalle_nuevo === 'string'
-                      ? selectedRecord.detalle_nuevo
-                      : JSON.stringify(selectedRecord.detalle_nuevo, null, 2)
-                    : '// Registro eliminado o sin detalle'}
-                </pre>
+                {renderFriendlyState(selectedRecord.detalle_nuevo, true)}
               </div>
-            </div>
-
-            {/* Nota de inmutabilidad */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.78rem',
-                color: 'var(--toy-muted)',
-                backgroundColor: '#FAF8F5',
-                padding: '0.5rem 0.85rem',
-                borderRadius: '8px'
-              }}
-            >
-              <Lock size={14} color="var(--toy-muted)" />
-              <span>
-                Registro inmutable: La tabla de auditoría cuenta con triggers de protección que bloquean estrictamente cualquier intento de actualización o borrado físico.
-              </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>

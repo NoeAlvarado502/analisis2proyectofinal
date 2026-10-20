@@ -45,18 +45,19 @@ export class AuditoriaService {
     const [countRows] = await pool.execute(
       `SELECT COUNT(*) AS total
        FROM auditoria a
-       JOIN usuarios u ON u.id_usuario = a.id_usuario
+       LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
        ${whereClause}`,
       params
     );
     const total = countRows[0].total;
 
     const [rows] = await pool.execute(
-      `SELECT a.id_auditoria, a.fecha_hora, a.id_usuario, u.nombre_completo AS usuario_nombre,
+      `SELECT a.id_auditoria, a.fecha_hora, a.id_usuario,
+              COALESCE(u.nombre_completo, CONCAT('Usuario #', a.id_usuario)) AS usuario_nombre,
               a.modulo, a.accion, a.id_registro,
               a.detalle_anterior, a.detalle_nuevo, a.ip_origen
        FROM auditoria a
-       JOIN usuarios u ON u.id_usuario = a.id_usuario
+       LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
        ${whereClause}
        ORDER BY a.id_auditoria DESC
        LIMIT ? OFFSET ?`,
