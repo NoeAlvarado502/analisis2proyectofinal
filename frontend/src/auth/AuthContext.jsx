@@ -53,7 +53,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
     setUser(null);
     setPermissions([]);
-    window.location.href = '/login';
+    const base = import.meta.env.BASE_URL || '/';
+    window.location.href = `${base.replace(/\/$/, '')}/login`;
   }, []);
 
   // Check if current user has a specific permission (or any of the provided permissions)

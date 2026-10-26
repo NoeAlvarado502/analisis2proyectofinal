@@ -191,7 +191,8 @@ export default function AuditoriaPage() {
     setLoading(true);
     try {
       const params = { page, limit: 15 };
-      if (q.trim()) params.q = q.trim();
+      const queryTerm = typeof q === 'string' ? q.trim() : (q?.target?.value?.trim() || '');
+      if (queryTerm) params.q = queryTerm;
       if (filterModulo) params.modulo = filterModulo;
       if (filterAccion) params.accion = filterAccion;
       if (filterFechaDesde) params.fecha_desde = filterFechaDesde;
@@ -347,7 +348,8 @@ export default function AuditoriaPage() {
             <div style={{ width: '280px' }}>
               <SearchInput
                 value={q}
-                onChange={(val) => {
+                onChange={(e) => {
+                  const val = typeof e === 'string' ? e : (e?.target?.value ?? '');
                   setQ(val);
                   setPage(1);
                 }}

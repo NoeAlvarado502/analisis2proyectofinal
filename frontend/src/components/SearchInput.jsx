@@ -10,6 +10,20 @@ export default function SearchInput({
   style = {},
   className = ''
 }) {
+  const displayValue = typeof value === 'string' ? value : (value?.target?.value ?? (value != null ? String(value) : ''));
+
+  const handleChange = (e) => {
+    if (!onChange) return;
+    try {
+      if (e && typeof e === 'object') {
+        e.trim = () => (e.target?.value || '').trim();
+        e.toLowerCase = () => (e.target?.value || '').toLowerCase();
+        e.toUpperCase = () => (e.target?.value || '').toUpperCase();
+      }
+    } catch (_) {}
+    onChange(e);
+  };
+
   return (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width }} className={className}>
       <Search
@@ -25,8 +39,8 @@ export default function SearchInput({
       <input
         type="text"
         className="form-control"
-        value={value}
-        onChange={onChange}
+        value={displayValue}
+        onChange={handleChange}
         placeholder={placeholder}
         aria-label={ariaLabel}
         style={{

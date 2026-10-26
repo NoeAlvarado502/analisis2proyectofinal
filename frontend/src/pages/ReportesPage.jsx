@@ -270,7 +270,8 @@ export default function ReportesPage() {
       if (kardexTipoMovimiento && kardexTipoMovimiento !== 'todos') params.tipo_movimiento = kardexTipoMovimiento;
       if (kardexDocumentoTipo && kardexDocumentoTipo !== 'todos') params.documento_tipo = kardexDocumentoTipo;
       if (kardexOrden) params.orden = kardexOrden;
-      if (kardexQ.trim()) params.q = kardexQ.trim();
+      const queryTerm = typeof kardexQ === 'string' ? kardexQ.trim() : (kardexQ?.target?.value?.trim() || '');
+      if (queryTerm) params.q = queryTerm;
 
       const res = await api.get('/reportes/kardex', { params });
       if (res?.data) {
@@ -310,7 +311,8 @@ export default function ReportesPage() {
       if (valMarcaId && valMarcaId !== 'todos') params.id_marca = valMarcaId;
       if (valEstadoStock && valEstadoStock !== 'todos') params.estado_stock = valEstadoStock;
       if (valActivo && valActivo !== 'todos') params.activo = valActivo;
-      if (valQ.trim()) params.q = valQ.trim();
+      const queryTerm = typeof valQ === 'string' ? valQ.trim() : (valQ?.target?.value?.trim() || '');
+      if (queryTerm) params.q = queryTerm;
 
       const res = await api.get('/reportes/valoracion-inventario', { params });
       if (res?.data) {
@@ -331,10 +333,14 @@ export default function ReportesPage() {
   useEffect(() => {
     if (activeTab === 'kardex') {
       fetchKardex();
-    } else {
+    }
+  }, [activeTab, fetchKardex]);
+
+  useEffect(() => {
+    if (activeTab === 'valoracion') {
       fetchValoracion();
     }
-  }, [activeTab, fetchKardex, fetchValoracion]);
+  }, [activeTab, fetchValoracion]);
 
   // Opciones de producto para SearchableSelect en Kardex
   const productoOptions = useMemo(() => {
@@ -949,8 +955,11 @@ export default function ReportesPage() {
             <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
               <div style={{ width: '200px' }}>
                 <SearchInput
-                  value={kardexQ}
-                  onChange={setKardexQ}
+                  value={typeof kardexQ === 'string' ? kardexQ : (kardexQ?.target?.value || '')}
+                  onChange={(e) => {
+                    const val = typeof e === 'string' ? e : (e?.target?.value ?? '');
+                    setKardexQ(val);
+                  }}
                   placeholder=""
                 />
               </div>
@@ -1035,8 +1044,11 @@ export default function ReportesPage() {
             <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
               <div style={{ width: '220px' }}>
                 <SearchInput
-                  value={valQ}
-                  onChange={setValQ}
+                  value={typeof valQ === 'string' ? valQ : (valQ?.target?.value || '')}
+                  onChange={(e) => {
+                    const val = typeof e === 'string' ? e : (e?.target?.value ?? '');
+                    setValQ(val);
+                  }}
                   placeholder=""
                 />
               </div>

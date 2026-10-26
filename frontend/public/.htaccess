@@ -1,0 +1,36 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /jugueteria/
+
+  # Proxy opcional hacia el API de Node.js si mod_proxy está activo
+  <IfModule mod_proxy.c>
+    RewriteRule ^api/(.*)$ http://127.0.0.1:4000/api/$1 [P,L]
+  </IfModule>
+
+  # Si la petición es un archivo o directorio físico existente, servir directamente
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Enrutamiento SPA: enviar todas las demás rutas a index.html
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Tipos MIME adecuados para módulos ES6, CSS y SVG
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+  AddType image/svg+xml .svg
+</IfModule>
+
+# Desactivar navegación de directorios
+Options -Indexes
+
+# Evitar caché en index.html para forzar siempre la versión más reciente de la app
+<Files "index.html">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+  </IfModule>
+</Files>

@@ -1,7 +1,18 @@
 import axios from 'axios';
 
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== '') {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname || 'localhost';
+    return `http://${host}:4000/api`;
+  }
+  return 'http://localhost:4000/api';
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json'
   }
@@ -29,8 +40,11 @@ api.interceptors.response.use(
       if (status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+        const base = import.meta.env.BASE_URL || '/';
+        const loginPath = `${base.replace(/\/$/, '')}/login`;
+        const currentPath = window.location.pathname.replace(/\/$/, '');
+        if (!currentPath.endsWith('/login')) {
+          window.location.href = loginPath;
         }
       }
 
