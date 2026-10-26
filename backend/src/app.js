@@ -21,6 +21,7 @@ import { ventasRouter } from './modules/ventas/ventas.routes.js';
 import { pagosRouter } from './modules/pagos/pagos.routes.js';
 import { auditoriaRouter } from './modules/auditoria/auditoria.routes.js';
 import { reportesRouter } from './modules/reportes/reportes.routes.js';
+import { configuracionesRouter } from './modules/configuraciones/configuraciones.routes.js';
 
 export const app = express();
 
@@ -65,6 +66,7 @@ app.use('/api/ventas', ventasRouter);
 app.use('/api/pagos', pagosRouter);
 app.use('/api/auditoria', auditoriaRouter);
 app.use('/api/reportes', reportesRouter);
+app.use('/api/configuraciones', configuracionesRouter);
 
 // Ruta de prueba para permisos en tests
 if (process.env.NODE_ENV === 'test') {

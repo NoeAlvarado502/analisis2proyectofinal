@@ -25,12 +25,12 @@ import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
 import FormField from '../components/FormField';
-import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import SearchableSelect from '../components/SearchableSelect';
 import ToySwitch from '../components/ToySwitch';
 import PageCard from '../components/PageCard';
 import DatePicker from '../components/DatePicker';
+import { useSearch } from '../context/SearchContext';
 
 export default function PedidosPage() {
   const { can, user } = useAuth();
@@ -48,11 +48,15 @@ export default function PedidosPage() {
   const [loading, setLoading] = useState(false);
 
   // Filtros
-  const [q, setQ] = useState('');
+  const { query: q } = useSearch();
   const [filterEstado, setFilterEstado] = useState(() => location.state?.filterEstado || '');
   const [filterFechaDesde, setFilterFechaDesde] = useState('');
   const [filterFechaHasta, setFilterFechaHasta] = useState('');
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
 
@@ -297,6 +301,13 @@ export default function PedidosPage() {
       setLoadingDetail(false);
     }
   };
+
+  // Abrir detalle automáticamente si se navega desde el panel de inicio con un pedidoId específico
+  useEffect(() => {
+    if (location.state?.pedidoId) {
+      handleOpenDetail({ id_pedido: location.state.pedidoId });
+    }
+  }, [location.state?.pedidoId]);
 
   // Producto seleccionado actualmente en itemInput
   const selectedProdInfo = useMemo(() => {
@@ -729,17 +740,6 @@ export default function PedidosPage() {
         title="Pedidos"
         actions={
           <>
-            <SearchInput
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(1);
-              }}
-              placeholder=""
-              width="210px"
-              ariaLabel="Buscar pedidos"
-            />
-
             <FilterDropdown
               title="Filtrar por estado"
               buttonTitle="Estados"

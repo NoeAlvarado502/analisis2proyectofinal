@@ -5,3 +5,4 @@ app.listen(env.PORT, () => {
   console.log(`🚀 Servidor backend escuchando en http://localhost:${env.PORT}`);
   console.log(`📡 Entorno: ${env.NODE_ENV}`);
 });
+// Sprint 4 inicializado correctamente

@@ -51,7 +51,19 @@ comprasRouter.patch(
   ComprasController.recibir
 );
 
+comprasRouter.put(
+  '/:id/recibir',
+  requirePermission('compras.recibir'),
+  ComprasController.recibir
+);
+
 comprasRouter.patch(
+  '/:id/anular',
+  requirePermission('compras.registrar'),
+  ComprasController.anular
+);
+
+comprasRouter.put(
   '/:id/anular',
   requirePermission('compras.registrar'),
   ComprasController.anular

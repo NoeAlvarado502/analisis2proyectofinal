@@ -33,9 +33,22 @@ reportesRouter.get(
   ReportesController.kardex
 );
 
-// Informe 2: Valoración Total de Inventario
+// Informe 2: Valoración Total de Inventario (CPP)
 reportesRouter.get(
   '/valoracion-inventario',
   requirePermission('reportes.consultar', 'inventario.consultar'),
   ReportesController.valoracionInventario
+);
+
+reportesRouter.get(
+  '/valoracion',
+  requirePermission('reportes.consultar', 'inventario.consultar'),
+  ReportesController.valoracion
+);
+
+// Informe 4: Reporte de Compras y Abastecimiento
+reportesRouter.get(
+  '/compras',
+  requirePermission('reportes.consultar', 'compras.registrar', 'compras.recibir'),
+  ReportesController.compras
 );

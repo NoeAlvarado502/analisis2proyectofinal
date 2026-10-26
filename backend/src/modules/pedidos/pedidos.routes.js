@@ -46,13 +46,31 @@ pedidosRouter.patch(
   PedidosController.enviar
 );
 
+pedidosRouter.put(
+  '/:id/enviar',
+  requirePermission('pedidos.crear'),
+  PedidosController.enviar
+);
+
 pedidosRouter.patch(
   '/:id/autorizar',
   requirePermission('pedidos.autorizar_descuento'),
   PedidosController.autorizar
 );
 
+pedidosRouter.put(
+  '/:id/autorizar',
+  requirePermission('pedidos.autorizar_descuento'),
+  PedidosController.autorizar
+);
+
 pedidosRouter.patch(
+  '/:id/cancelar',
+  requirePermission('pedidos.cancelar', 'pedidos.crear'),
+  PedidosController.cancelar
+);
+
+pedidosRouter.put(
   '/:id/cancelar',
   requirePermission('pedidos.cancelar', 'pedidos.crear'),
   PedidosController.cancelar

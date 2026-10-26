@@ -84,21 +84,18 @@ export class VentasService {
    */
   static async sugerirFactura() {
     const [rows] = await pool.execute(
-      `SELECT numero_factura
-       FROM ventas
-       WHERE numero_factura LIKE 'FAC-%'
-       ORDER BY id_venta DESC
-       LIMIT 1`
+      `SELECT numero_factura FROM ventas WHERE numero_factura LIKE 'FAC-%'`
     );
 
-    let nextNum = 1;
-    if (rows.length > 0) {
-      const match = rows[0].numero_factura.match(/^FAC-(\d+)$/i);
+    let maxNum = 0;
+    for (const r of rows) {
+      const match = r.numero_factura.match(/^FAC-(\d+)$/i);
       if (match) {
-        nextNum = parseInt(match[1], 10) + 1;
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
       }
     }
-    const sugerencia = `FAC-${String(nextNum).padStart(4, '0')}`;
+    const sugerencia = `FAC-${String(maxNum + 1).padStart(4, '0')}`;
     return { sugerencia };
   }
 

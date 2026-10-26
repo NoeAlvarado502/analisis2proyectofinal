@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import { ToastProvider } from './components/Toast';
+import { SearchProvider } from './context/SearchContext';
 import AppRoutes from './routes/AppRoutes';
 
 export default function App() {
@@ -9,7 +10,9 @@ export default function App() {
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <AuthProvider>
         <ToastProvider>
-          <AppRoutes />
+          <SearchProvider>
+            <AppRoutes />
+          </SearchProvider>
         </ToastProvider>
       </AuthProvider>
     </BrowserRouter>

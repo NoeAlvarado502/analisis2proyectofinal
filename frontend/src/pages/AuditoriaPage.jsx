@@ -13,10 +13,10 @@ import api from '../api/client';
 import { useToast } from '../components/Toast';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
-import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import PageCard from '../components/PageCard';
 import DatePicker from '../components/DatePicker';
+import { useSearch } from '../context/SearchContext';
 
 const FIELD_LABELS = {
   nombre: 'Nombre',
@@ -160,12 +160,16 @@ export default function AuditoriaPage() {
   const [loading, setLoading] = useState(false);
 
   // Filtros
-  const [q, setQ] = useState('');
+  const { query: q } = useSearch();
   const [filterModulo, setFilterModulo] = useState('');
   const [filterAccion, setFilterAccion] = useState('');
   const [filterFechaDesde, setFilterFechaDesde] = useState('');
   const [filterFechaHasta, setFilterFechaHasta] = useState('');
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
 
@@ -345,18 +349,6 @@ export default function AuditoriaPage() {
           }}
         >
           <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
-            <div style={{ width: '280px' }}>
-              <SearchInput
-                value={q}
-                onChange={(e) => {
-                  const val = typeof e === 'string' ? e : (e?.target?.value ?? '');
-                  setQ(val);
-                  setPage(1);
-                }}
-                placeholder=""
-              />
-            </div>
-
             <FilterDropdown
               title="Filtrar por Módulo"
               buttonTitle="Módulo"

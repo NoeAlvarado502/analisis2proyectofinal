@@ -1,11 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, Search, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { useSearch } from '../context/SearchContext';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { query, setQuery, placeholder, clearQuery, handleSearchSubmit } = useSearch();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // Atajo de teclado global: Ctrl+K o '/' para enfocar el buscador
+  useEffect(() => {
+    function handleKeyDown(e) {
+      const target = e.target;
+      const isInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable;
+
+      if ((e.ctrlKey && e.key.toLowerCase() === 'k') || (e.key === '/' && !isInput)) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+      if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        searchInputRef.current?.blur();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -47,6 +72,89 @@ export default function Navbar() {
 
   return (
     <header className="top-navbar">
+      {/* Input de Búsqueda Rediseñado al Inicio del Header (a la derecha del logo) */}
+      <div
+        className="header-search-container"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          position: 'relative',
+          width: 'clamp(360px, 46vw, 560px)',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        <Search
+          size={18}
+          strokeWidth={2.4}
+          style={{
+            position: 'absolute',
+            left: '14px',
+            color: query ? 'var(--toy-blue)' : 'var(--toy-muted)',
+            pointerEvents: 'none',
+            transition: 'color 0.15s ease'
+          }}
+        />
+
+        <input
+          ref={searchInputRef}
+          type="text"
+          className="header-search-input"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleSearchSubmit(query);
+            }
+          }}
+          placeholder={placeholder}
+          aria-label="Buscar en el sistema"
+          style={{
+            width: '100%',
+            height: '42px',
+            paddingLeft: '40px',
+            paddingRight: query ? '38px' : '16px',
+            borderRadius: '999px',
+            border: '2px solid var(--toy-border)',
+            backgroundColor: '#FAF8F5',
+            color: 'var(--toy-ink)',
+            fontSize: '0.88rem',
+            fontFamily: 'var(--font-body)',
+            fontWeight: 700,
+            outline: 'none',
+            transition: 'all 0.18s ease'
+          }}
+        />
+
+        {query && (
+          <button
+            type="button"
+            onClick={clearQuery}
+            title="Limpiar búsqueda (Esc)"
+            aria-label="Limpiar búsqueda"
+            style={{
+              position: 'absolute',
+              right: '10px',
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(58, 42, 34, 0.08)',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'var(--toy-muted)',
+              transition: 'background-color 0.12s ease'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(241, 91, 74, 0.18)')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(58, 42, 34, 0.08)')}
+          >
+            <X size={14} strokeWidth={2.4} />
+          </button>
+        )}
+      </div>
+
+      {/* Perfil de Usuario */}
       <div style={{ position: 'relative' }} ref={dropdownRef}>
         {/* Únicamente la burbujita del usuario */}
         <button

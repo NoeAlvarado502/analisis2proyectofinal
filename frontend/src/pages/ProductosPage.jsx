@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PackagePlus, Pencil, AlertTriangle, AlertCircle, Plus, Sparkles } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { useSearch } from '../context/SearchContext';
 import { useToast } from '../components/Toast';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import FormField from '../components/FormField';
 import PermissionGate from '../components/PermissionGate';
 import PageCard from '../components/PageCard';
-import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import ToySwitch from '../components/ToySwitch';
 import ConfirmModal from '../components/ConfirmModal';
@@ -41,12 +41,16 @@ export default function ProductosPage() {
   const [loading, setLoading] = useState(false);
 
   // Filters & Pagination
-  const [q, setQ] = useState('');
+  const { query: q } = useSearch();
   const [filterCategoria, setFilterCategoria] = useState('');
   const [filterEstado, setFilterEstado] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
 
   const estadoOptions = [
     { value: '', label: 'Todos los estados', shortLabel: 'Estados', color: 'var(--toy-muted)' },
@@ -613,16 +617,6 @@ export default function ProductosPage() {
         title="Productos"
         actions={
           <>
-            <SearchInput
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(1);
-              }}
-              placeholder=""
-              ariaLabel="Buscar juguetes"
-            />
-
             <FilterDropdown
               options={categoriaOptions}
               value={filterCategoria}

@@ -87,21 +87,18 @@ export class PedidosService {
    */
   static async sugerirNumero() {
     const [rows] = await pool.execute(
-      `SELECT numero_pedido
-       FROM pedidos
-       WHERE numero_pedido LIKE 'PED-%'
-       ORDER BY id_pedido DESC
-       LIMIT 1`
+      `SELECT numero_pedido FROM pedidos WHERE numero_pedido LIKE 'PED-%'`
     );
 
-    let nextNum = 1;
-    if (rows.length > 0) {
-      const match = rows[0].numero_pedido.match(/^PED-(\d+)$/i);
+    let maxNum = 0;
+    for (const r of rows) {
+      const match = r.numero_pedido.match(/^PED-(\d+)$/i);
       if (match) {
-        nextNum = parseInt(match[1], 10) + 1;
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
       }
     }
-    const sugerencia = `PED-${String(nextNum).padStart(4, '0')}`;
+    const sugerencia = `PED-${String(maxNum + 1).padStart(4, '0')}`;
 
     const [cfgRows] = await pool.execute(
       `SELECT valor FROM configuraciones WHERE clave = 'DESCUENTO_MAX_SIN_AUTORIZACION'`

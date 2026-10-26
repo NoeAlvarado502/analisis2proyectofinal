@@ -438,11 +438,18 @@ a:hover {
   border-bottom: none;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
   padding: 0 2.2rem;
   flex-shrink: 0;
   z-index: 100;
   box-shadow: none;
+}
+
+.header-search-input:focus {
+  background-color: #FFFFFF !important;
+  border-color: var(--toy-blue) !important;
+  box-shadow: 0 0 0 3.5px rgba(25, 168, 232, 0.16) !important;
 }
 
 @keyframes dropdownFadeIn {

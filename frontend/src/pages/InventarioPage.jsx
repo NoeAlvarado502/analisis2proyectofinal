@@ -15,12 +15,12 @@ import { useToast } from '../components/Toast';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import FormField from '../components/FormField';
-import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import PageCard from '../components/PageCard';
 import PermissionGate from '../components/PermissionGate';
 import ToySwitch from '../components/ToySwitch';
 import SearchableSelect from '../components/SearchableSelect';
+import { useSearch } from '../context/SearchContext';
 
 // Helper de formato de edad idéntico a ProductosPage
 const formatEdadBadge = (meses) => {
@@ -44,6 +44,7 @@ export default function InventarioPage() {
 
   // Sección activa ('existencias' | 'kardex' | 'alertas')
   const [activeTab, setActiveTab] = useState(() => location.state?.activeTab || 'existencias');
+  const { query, setPlaceholder } = useSearch();
 
   // Catálogos auxiliares
   const [categorias, setCategorias] = useState([]);
@@ -60,6 +61,21 @@ export default function InventarioPage() {
   const [pageExistencias, setPageExistencias] = useState(1);
   const [totalPagesExistencias, setTotalPagesExistencias] = useState(1);
   const [totalRecordsExistencias, setTotalRecordsExistencias] = useState(0);
+
+  useEffect(() => {
+    if (activeTab === 'existencias') {
+      setPlaceholder('Buscar existencias...');
+      setQExistencias(query);
+      setPageExistencias(1);
+    } else if (activeTab === 'kardex') {
+      setPlaceholder('Buscar en kardex...');
+      setQMov(query);
+      setPageMov(1);
+    } else if (activeTab === 'alertas') {
+      setPlaceholder('Buscar alertas...');
+      setQAlertas(query);
+    }
+  }, [query, activeTab, setPlaceholder]);
 
   // Sincronizar filtros/pestaña cuando se navega con estado desde las alertas (Home)
   useEffect(() => {
@@ -889,29 +905,6 @@ export default function InventarioPage() {
         title="Inventario"
         actions={
           <>
-            <SearchInput
-              value={
-                activeTab === 'existencias'
-                  ? qExistencias
-                  : activeTab === 'kardex'
-                  ? qMov
-                  : qAlertas
-              }
-              onChange={(e) => {
-                if (activeTab === 'existencias') {
-                  setQExistencias(e.target.value);
-                  setPageExistencias(1);
-                } else if (activeTab === 'kardex') {
-                  setQMov(e.target.value);
-                  setPageMov(1);
-                } else if (activeTab === 'alertas') {
-                  setQAlertas(e.target.value);
-                }
-              }}
-              placeholder=""
-              ariaLabel="Buscar en inventario"
-            />
-
             {/* Filtros dinámicos según pestaña activa */}
             {activeTab === 'existencias' && (
               <>

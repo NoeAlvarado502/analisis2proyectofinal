@@ -79,24 +79,18 @@ export class ComprasService {
    */
   static async sugerirComprobante() {
     const [rows] = await pool.execute(
-      `SELECT numero_comprobante
-       FROM compras
-       WHERE numero_comprobante LIKE 'COMP-%'
-       ORDER BY id_compra DESC
-       LIMIT 1`
+      `SELECT numero_comprobante FROM compras WHERE numero_comprobante LIKE 'COMP-%'`
     );
 
-    if (rows.length === 0) {
-      return { sugerencia: 'COMP-0001' };
+    let maxNum = 0;
+    for (const r of rows) {
+      const match = r.numero_comprobante.match(/^COMP-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
     }
-
-    const match = rows[0].numero_comprobante.match(/^COMP-(\d+)$/i);
-    if (!match) {
-      return { sugerencia: 'COMP-0001' };
-    }
-
-    const nextNum = parseInt(match[1], 10) + 1;
-    const sugerencia = `COMP-${String(nextNum).padStart(4, '0')}`;
+    const sugerencia = `COMP-${String(maxNum + 1).padStart(4, '0')}`;
     return { sugerencia };
   }
 

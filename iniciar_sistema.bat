@@ -45,4 +45,4 @@ echo Presiona Ctrl + C en esta ventana cuando desees detener el backend.
 echo.
 
 cd /d "%~dp0backend"
-npm start
+npm run dev

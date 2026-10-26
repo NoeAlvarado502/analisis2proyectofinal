@@ -81,21 +81,18 @@ export class PagosService {
    */
   static async sugerirRecibo() {
     const [rows] = await pool.execute(
-      `SELECT numero_recibo
-       FROM pagos
-       WHERE numero_recibo LIKE 'REC-%'
-       ORDER BY id_pago DESC
-       LIMIT 1`
+      `SELECT numero_recibo FROM pagos WHERE numero_recibo LIKE 'REC-%'`
     );
 
-    let nextNum = 1;
-    if (rows.length > 0) {
-      const match = rows[0].numero_recibo.match(/^REC-(\d+)$/i);
+    let maxNum = 0;
+    for (const r of rows) {
+      const match = r.numero_recibo.match(/^REC-(\d+)$/i);
       if (match) {
-        nextNum = parseInt(match[1], 10) + 1;
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
       }
     }
-    const sugerencia = `REC-${String(nextNum).padStart(4, '0')}`;
+    const sugerencia = `REC-${String(maxNum + 1).padStart(4, '0')}`;
     return { sugerencia };
   }
 

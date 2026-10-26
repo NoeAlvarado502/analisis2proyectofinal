@@ -2,23 +2,26 @@ import { pool } from '../../db/pool.js';
 
 export class ReportesService {
   /**
-   * Reporte de ventas filtrable con resumen consolidado
+   * Reporte de ventas filtrable con resumen consolidado y 4 KPIs
    */
-  static async ventas({ fecha_desde, fecha_hasta, estado, q }) {
+  static async ventas({ fecha_desde, fecha_hasta, fecha_inicio, fecha_fin, estado, q }) {
+    const fDesde = fecha_inicio || fecha_desde;
+    const fHasta = fecha_fin || fecha_hasta;
+
     const whereConditions = [];
     const params = [];
 
-    if (fecha_desde) {
+    if (fDesde) {
       whereConditions.push('fecha_venta >= ?');
-      params.push(fecha_desde.includes(' ') ? fecha_desde : `${fecha_desde} 00:00:00`);
+      params.push(fDesde.includes(' ') ? fDesde : `${fDesde} 00:00:00`);
     }
 
-    if (fecha_hasta) {
+    if (fHasta) {
       whereConditions.push('fecha_venta <= ?');
-      params.push(fecha_hasta.includes(' ') ? fecha_hasta : `${fecha_hasta} 23:59:59`);
+      params.push(fHasta.includes(' ') ? fHasta : `${fHasta} 23:59:59`);
     }
 
-    if (estado && estado.trim() !== '') {
+    if (estado && estado.trim() !== '' && estado !== 'todos') {
       whereConditions.push('estado = ?');
       params.push(estado.trim());
     }
@@ -41,6 +44,7 @@ export class ReportesService {
     );
 
     let total_ventas = 0;
+    let total_facturado_completadas = 0;
     let total_descuentos = 0;
     let total_saldo_pendiente = 0;
     const conteo_por_estado = {
@@ -50,9 +54,18 @@ export class ReportesService {
     };
 
     for (const r of rows) {
-      total_ventas += parseFloat(r.total) || 0;
-      total_descuentos += parseFloat(r.descuento) || 0;
-      total_saldo_pendiente += parseFloat(r.saldo_pendiente) || 0;
+      const tot = parseFloat(r.total) || 0;
+      const desc = parseFloat(r.descuento) || 0;
+      const saldo = parseFloat(r.saldo_pendiente) || 0;
+
+      total_ventas += tot;
+      total_descuentos += desc;
+      total_saldo_pendiente += saldo;
+
+      if (r.estado === 'COMPLETADA') {
+        total_facturado_completadas += tot;
+      }
+
       if (conteo_por_estado[r.estado] !== undefined) {
         conteo_por_estado[r.estado] += 1;
       } else {
@@ -62,10 +75,18 @@ export class ReportesService {
 
     return {
       filas: rows,
-      resumen: {
-        total_ventas: parseFloat(total_ventas.toFixed(2)),
+      kpis: {
+        total_facturado_completadas: parseFloat(total_facturado_completadas.toFixed(2)),
         total_descuentos: parseFloat(total_descuentos.toFixed(2)),
         total_saldo_pendiente: parseFloat(total_saldo_pendiente.toFixed(2)),
+        total_facturas: rows.length
+      },
+      resumen: {
+        total_ventas: parseFloat(total_ventas.toFixed(2)),
+        total_facturado_completadas: parseFloat(total_facturado_completadas.toFixed(2)),
+        total_descuentos: parseFloat(total_descuentos.toFixed(2)),
+        total_saldo_pendiente: parseFloat(total_saldo_pendiente.toFixed(2)),
+        total_facturas: rows.length,
         conteo_por_estado
       }
     };
@@ -111,19 +132,42 @@ export class ReportesService {
   }
 
   /**
-   * Consolidado del Dashboard con indicadores clave y gráficas
+   * Consolidado del Dashboard con indicadores clave, gráficas y paneles de acción rápida
    */
   static async dashboard() {
     const [dashRows] = await pool.execute('SELECT * FROM v_dashboard');
     const [pedidosRows] = await pool.execute('SELECT * FROM v_pedidos_por_estado');
     const [ventasMesRows] = await pool.execute('SELECT * FROM v_ventas_por_mes ORDER BY mes ASC');
-    const [topProdRows] = await pool.execute('SELECT * FROM v_top_productos ORDER BY ingresos DESC LIMIT 10');
+    const [topProdRows] = await pool.execute('SELECT * FROM v_top_productos ORDER BY ingresos DESC LIMIT 5');
+
+    // 5 alertas de stock más urgentes
+    const [alertasStock] = await pool.execute(
+      `SELECT id_producto, codigo_sku, nombre, categoria, stock_actual, stock_minimo, faltante
+       FROM v_stock_bajo
+       ORDER BY faltante DESC, stock_actual ASC
+       LIMIT 5`
+    );
+
+    // Últimos 5 pedidos en PENDIENTE_APROBACION
+    const [pedidosPendientes] = await pool.execute(
+      `SELECT pe.id_pedido, pe.numero_pedido, pe.fecha_creacion, pe.fecha_creacion AS fecha_pedido,
+              pe.total, pe.descuento_total, pe.motivo_descuento_especial,
+              c.nombre_razon_social AS cliente, u.nombre_completo AS vendedor
+       FROM pedidos pe
+       JOIN clientes c ON c.id_cliente = pe.id_cliente
+       JOIN usuarios u ON u.id_usuario = pe.id_usuario_vendedor
+       WHERE pe.estado = 'PENDIENTE_APROBACION'
+       ORDER BY pe.fecha_creacion DESC
+       LIMIT 5`
+    );
 
     return {
       indicadores: dashRows[0] || {},
       pedidos_por_estado: pedidosRows,
       ventas_por_mes: ventasMesRows,
-      top_productos: topProdRows
+      top_productos: topProdRows,
+      alertas_stock: alertasStock,
+      pedidos_pendientes: pedidosPendientes
     };
   }
 
@@ -134,6 +178,8 @@ export class ReportesService {
   static async kardex({
     fecha_desde,
     fecha_hasta,
+    fecha_inicio,
+    fecha_fin,
     id_producto,
     codigo_sku,
     id_categoria,
@@ -142,17 +188,20 @@ export class ReportesService {
     orden = 'DESC',
     q
   } = {}) {
+    const fDesde = fecha_inicio || fecha_desde;
+    const fHasta = fecha_fin || fecha_hasta;
+
     const whereConditions = [];
     const params = [];
 
-    if (fecha_desde) {
+    if (fDesde) {
       whereConditions.push('k.fecha_hora >= ?');
-      params.push(fecha_desde.includes(' ') ? fecha_desde : `${fecha_desde} 00:00:00`);
+      params.push(fDesde.includes(' ') ? fDesde : `${fDesde} 00:00:00`);
     }
 
-    if (fecha_hasta) {
+    if (fHasta) {
       whereConditions.push('k.fecha_hora <= ?');
-      params.push(fecha_hasta.includes(' ') ? fecha_hasta : `${fecha_hasta} 23:59:59`);
+      params.push(fHasta.includes(' ') ? fHasta : `${fHasta} 23:59:59`);
     }
 
     if (id_producto && String(id_producto).trim() !== '' && String(id_producto) !== 'todos') {
@@ -451,6 +500,116 @@ export class ReportesService {
       metadatos: {
         categorias: categoriasLista,
         marcas: marcasLista
+      }
+    };
+  }
+
+  /**
+   * Alias de valoración de inventario
+   */
+  static async valoracion(params) {
+    return this.valoracionInventario(params);
+  }
+
+  /**
+   * Informe 4: Reporte de Compras y Abastecimiento
+   * Consulta compras unida con proveedores y usuarios
+   */
+  static async compras({
+    fecha_desde,
+    fecha_hasta,
+    fecha_inicio,
+    fecha_fin,
+    id_proveedor,
+    estado,
+    q
+  } = {}) {
+    const fDesde = fecha_inicio || fecha_desde;
+    const fHasta = fecha_fin || fecha_hasta;
+
+    const whereConditions = [];
+    const params = [];
+
+    if (fDesde) {
+      whereConditions.push('c.fecha_compra >= ?');
+      params.push(fDesde.includes(' ') ? fDesde : `${fDesde} 00:00:00`);
+    }
+
+    if (fHasta) {
+      whereConditions.push('c.fecha_compra <= ?');
+      params.push(fHasta.includes(' ') ? fHasta : `${fHasta} 23:59:59`);
+    }
+
+    if (id_proveedor && String(id_proveedor).trim() !== '' && String(id_proveedor) !== 'todos') {
+      whereConditions.push('c.id_proveedor = ?');
+      params.push(parseInt(id_proveedor, 10));
+    }
+
+    if (estado && estado.trim() !== '' && estado !== 'todos') {
+      whereConditions.push('c.estado = ?');
+      params.push(estado.trim());
+    }
+
+    if (q && q.trim() !== '') {
+      whereConditions.push('(c.numero_comprobante LIKE ? OR p.razon_social LIKE ? OR p.identificacion_fiscal LIKE ? OR u.nombre_completo LIKE ?)');
+      const term = `%${q.trim()}%`;
+      params.push(term, term, term, term);
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const [rows] = await pool.execute(
+      `SELECT c.id_compra, c.numero_comprobante, c.numero_comprobante AS numero_orden,
+              c.fecha_compra, c.fecha_recepcion, c.total, c.estado, c.observaciones,
+              p.id_proveedor, p.razon_social AS proveedor, p.identificacion_fiscal AS nit_proveedor,
+              u.nombre_completo AS usuario_comprador
+       FROM compras c
+       JOIN proveedores p ON p.id_proveedor = c.id_proveedor
+       JOIN usuarios u ON u.id_usuario = c.id_usuario
+       ${whereClause}
+       ORDER BY c.fecha_compra DESC, c.id_compra DESC`,
+      params
+    );
+
+    let monto_recibidas = 0;
+    let compras_pendientes = 0;
+    let ordenes_anuladas = 0;
+    let total_monto_general = 0;
+
+    for (const r of rows) {
+      const tot = parseFloat(r.total) || 0;
+      total_monto_general += tot;
+
+      if (r.estado === 'RECIBIDA') {
+        monto_recibidas += tot;
+      } else if (r.estado === 'REGISTRADA' || r.estado === 'SOLICITADA' || r.estado === 'CONFIRMADA') {
+        compras_pendientes += 1;
+      } else if (r.estado === 'ANULADA' || r.estado === 'CANCELADA') {
+        ordenes_anuladas += 1;
+      }
+    }
+
+    const [proveedoresLista] = await pool.execute(
+      'SELECT id_proveedor, razon_social FROM proveedores ORDER BY razon_social ASC'
+    );
+
+    return {
+      filas: rows,
+      kpis: {
+        monto_recibidas: parseFloat(monto_recibidas.toFixed(2)),
+        compras_pendientes,
+        ordenes_anuladas,
+        total_documentos: rows.length
+      },
+      resumen: {
+        monto_recibidas: parseFloat(monto_recibidas.toFixed(2)),
+        total_monto_general: parseFloat(total_monto_general.toFixed(2)),
+        compras_pendientes,
+        ordenes_anuladas,
+        total_documentos: rows.length
+      },
+      metadatos: {
+        proveedores: proveedoresLista
       }
     };
   }

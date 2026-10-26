@@ -23,12 +23,12 @@ import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
 import FormField from '../components/FormField';
-import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import SearchableSelect from '../components/SearchableSelect';
 import ToySwitch from '../components/ToySwitch';
 import PageCard from '../components/PageCard';
 import DatePicker from '../components/DatePicker';
+import { useSearch } from '../context/SearchContext';
 
 export default function VentasPage() {
   const { can } = useAuth();
@@ -40,6 +40,7 @@ export default function VentasPage() {
 
   // Pestaña activa ('facturas' | 'pagos')
   const [activeTab, setActiveTab] = useState('facturas');
+  const { query, setPlaceholder } = useSearch();
 
   // ========================================================
   // PESTAÑA 1: FACTURAS DE VENTA
@@ -53,6 +54,18 @@ export default function VentasPage() {
   const [pageVentas, setPageVentas] = useState(1);
   const [totalPagesVentas, setTotalPagesVentas] = useState(1);
   const [totalRecordsVentas, setTotalRecordsVentas] = useState(0);
+
+  useEffect(() => {
+    if (activeTab === 'facturas') {
+      setPlaceholder('Buscar ventas...');
+      setQVentas(query);
+      setPageVentas(1);
+    } else {
+      setPlaceholder('Buscar pagos...');
+      setQPagos(query);
+      setPagePagos(1);
+    }
+  }, [query, activeTab, setPlaceholder]);
 
   const hoyStr = useMemo(() => {
     const d = new Date();
@@ -778,24 +791,6 @@ export default function VentasPage() {
         title="Ventas y Pagos"
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Input de búsqueda a la izquierda de los filtros */}
-            <SearchInput
-              value={activeTab === 'facturas' ? qVentas : qPagos}
-              onChange={(e) => {
-                const val = e?.target ? e.target.value : (e || '');
-                if (activeTab === 'facturas') {
-                  setQVentas(val);
-                  setPageVentas(1);
-                } else {
-                  setQPagos(val);
-                  setPagePagos(1);
-                }
-              }}
-              placeholder=""
-              width="210px"
-              ariaLabel={activeTab === 'facturas' ? 'Buscar facturas' : 'Buscar pagos'}
-            />
-
             {/* Filtro estados/métodos a la izquierda de facturas/historial de pagos */}
             {activeTab === 'facturas' ? (
               <FilterDropdown

@@ -16,11 +16,11 @@ import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
 import FormField from '../components/FormField';
-import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import SearchableSelect from '../components/SearchableSelect';
 import ToySwitch from '../components/ToySwitch';
 import PageCard from '../components/PageCard';
+import { useSearch } from '../context/SearchContext';
 
 export default function ComprasPage() {
   const { can } = useAuth();
@@ -35,12 +35,16 @@ export default function ComprasPage() {
   const [loading, setLoading] = useState(false);
 
   // Filtros
-  const [q, setQ] = useState('');
+  const { query: q } = useSearch();
   const [filterProveedor, setFilterProveedor] = useState('');
   const [filterEstado, setFilterEstado] = useState('');
   const [filterFechaDesde, setFilterFechaDesde] = useState('');
   const [filterFechaHasta, setFilterFechaHasta] = useState('');
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
 
@@ -561,17 +565,6 @@ export default function ComprasPage() {
         title="Compras"
         actions={
           <>
-            <SearchInput
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(1);
-              }}
-              placeholder=""
-              width="210px"
-              ariaLabel="Buscar compras"
-            />
-
             <SearchableSelect
               options={[
                 { value: '', label: 'Proveedores' },

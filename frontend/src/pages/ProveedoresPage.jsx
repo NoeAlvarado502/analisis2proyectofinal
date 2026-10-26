@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Pencil } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { useSearch } from '../context/SearchContext';
 import { useToast } from '../components/Toast';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
 import FormField from '../components/FormField';
 import PermissionGate from '../components/PermissionGate';
-import SearchInput from '../components/SearchInput';
 import FilterDropdown from '../components/FilterDropdown';
 import ToySwitch from '../components/ToySwitch';
 import PageCard from '../components/PageCard';
@@ -52,11 +52,15 @@ export default function ProveedoresPage() {
   const [loading, setLoading] = useState(false);
 
   // Filtros y paginación
-  const [q, setQ] = useState('');
+  const { query: q } = useSearch();
   const [filterEstado, setFilterEstado] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
 
   const estadoOptions = [
     { value: '', label: 'Todos los estados', shortLabel: 'Estados', color: 'var(--toy-muted)' },
@@ -377,16 +381,6 @@ export default function ProveedoresPage() {
         title="Proveedores"
         actions={
           <>
-            <SearchInput
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(1);
-              }}
-              placeholder=""
-              ariaLabel="Buscar proveedores"
-            />
-
             <FilterDropdown
               options={estadoOptions}
               value={filterEstado}
