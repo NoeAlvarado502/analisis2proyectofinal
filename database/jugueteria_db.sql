@@ -874,6 +874,23 @@ BEGIN
             END IF;
             SET NEW.fecha_autorizacion = NOW();
         END IF;
+
+        IF NEW.estado = 'APROBADO' AND OLD.estado IN ('CREADO', 'PENDIENTE_APROBACION') THEN
+            IF EXISTS (
+                SELECT 1
+                FROM pedidos_detalle pd
+                JOIN inventario i ON i.id_producto = pd.id_producto
+                WHERE pd.id_pedido = OLD.id_pedido
+                  AND pd.cantidad > (
+                      i.stock_actual
+                      - COALESCE((SELECT SUM(vd.cantidad) FROM ventas_detalle vd JOIN ventas v ON v.id_venta = vd.id_venta WHERE vd.id_producto = pd.id_producto AND v.estado = 'PENDIENTE'), 0)
+                      - COALESCE((SELECT SUM(pd2.cantidad) FROM pedidos_detalle pd2 JOIN pedidos p2 ON p2.id_pedido = pd2.id_pedido WHERE pd2.id_producto = pd.id_producto AND p2.estado = 'APROBADO' AND p2.id_pedido <> OLD.id_pedido), 0)
+                  )
+            ) THEN
+                SIGNAL SQLSTATE '45000'
+                    SET MESSAGE_TEXT = 'Inventario insuficiente para la cantidad solicitada';
+            END IF;
+        END IF;
     END IF;
 END$$
 
@@ -927,7 +944,10 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El producto esta inactivo';
     END IF;
 
-    SELECT stock_actual INTO v_stock FROM inventario WHERE id_producto = NEW.id_producto;
+    SELECT stock_actual
+           - COALESCE((SELECT SUM(vd.cantidad) FROM ventas_detalle vd JOIN ventas v ON v.id_venta = vd.id_venta WHERE vd.id_producto = NEW.id_producto AND v.estado = 'PENDIENTE'), 0)
+           - COALESCE((SELECT SUM(pd.cantidad) FROM pedidos_detalle pd JOIN pedidos p ON p.id_pedido = pd.id_pedido WHERE pd.id_producto = NEW.id_producto AND p.estado = 'APROBADO' AND p.id_pedido <> NEW.id_pedido), 0)
+      INTO v_stock FROM inventario WHERE id_producto = NEW.id_producto;
     IF NEW.cantidad > v_stock THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Inventario insuficiente para la cantidad solicitada';
@@ -960,7 +980,10 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Solo se modifica el detalle de un pedido CREADO';
     END IF;
 
-    SELECT stock_actual INTO v_stock FROM inventario WHERE id_producto = NEW.id_producto;
+    SELECT stock_actual
+           - COALESCE((SELECT SUM(vd.cantidad) FROM ventas_detalle vd JOIN ventas v ON v.id_venta = vd.id_venta WHERE vd.id_producto = NEW.id_producto AND v.estado = 'PENDIENTE'), 0)
+           - COALESCE((SELECT SUM(pd.cantidad) FROM pedidos_detalle pd JOIN pedidos p ON p.id_pedido = pd.id_pedido WHERE pd.id_producto = NEW.id_producto AND p.estado = 'APROBADO' AND p.id_pedido <> NEW.id_pedido), 0)
+      INTO v_stock FROM inventario WHERE id_producto = NEW.id_producto;
     IF NEW.cantidad > v_stock THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Inventario insuficiente para la cantidad solicitada';
@@ -1106,7 +1129,10 @@ BEGIN
     IF v_estado <> 'PENDIENTE' THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Una venta finalizada no puede modificarse';
     END IF;
-    SELECT stock_actual INTO v_stock FROM inventario WHERE id_producto = NEW.id_producto;
+    SELECT stock_actual
+           - COALESCE((SELECT SUM(vd.cantidad) FROM ventas_detalle vd JOIN ventas v ON v.id_venta = vd.id_venta WHERE vd.id_producto = NEW.id_producto AND v.estado = 'PENDIENTE' AND v.id_venta <> NEW.id_venta), 0)
+           - COALESCE((SELECT SUM(pd.cantidad) FROM pedidos_detalle pd JOIN pedidos p ON p.id_pedido = pd.id_pedido WHERE pd.id_producto = NEW.id_producto AND p.estado = 'APROBADO' AND p.id_pedido <> (SELECT v2.id_pedido FROM ventas v2 WHERE v2.id_venta = NEW.id_venta)), 0)
+      INTO v_stock FROM inventario WHERE id_producto = NEW.id_producto;
     IF NEW.cantidad > v_stock THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se puede vender mas que el inventario disponible';
     END IF;

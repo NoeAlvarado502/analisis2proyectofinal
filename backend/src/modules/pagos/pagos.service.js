@@ -148,6 +148,17 @@ export class PagosService {
     }
 
     const { insertId, ventaActualizada } = await withUser(currentUserId, async (conn) => {
+      if (!numero_recibo || typeof numero_recibo !== 'string' || numero_recibo.trim() === '') {
+        const [recRows] = await conn.execute(
+          `SELECT numero_recibo FROM pagos WHERE numero_recibo REGEXP '^REC-[0-9]+$' ORDER BY CAST(SUBSTRING(numero_recibo, 5) AS UNSIGNED) DESC LIMIT 1 FOR UPDATE`
+        );
+        let nextRec = 1;
+        if (recRows.length > 0) {
+          const match = recRows[0].numero_recibo.match(/^REC-(\d+)$/i);
+          if (match) nextRec = parseInt(match[1], 10) + 1;
+        }
+        finalRecibo = `REC-${String(nextRec).padStart(4, '0')}`;
+      }
       const [resPago] = await conn.execute(
         `INSERT INTO pagos (numero_recibo, id_venta, id_usuario, monto, metodo_pago, referencia_pago)
          VALUES (?, ?, ?, ?, ?, ?)`,

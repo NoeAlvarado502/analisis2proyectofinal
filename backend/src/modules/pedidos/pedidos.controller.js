@@ -73,7 +73,7 @@ export class PedidosController {
     try {
       const id = parseInt(req.params.id, 10);
       const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
-      const pedido = await PedidosService.enviar(id, req.user.id_usuario, ip);
+      const pedido = await PedidosService.enviar(id, req.user.id_usuario, ip, req.body?.motivo_descuento_especial);
       res.json(successResponse(pedido));
     } catch (err) {
       next(err);

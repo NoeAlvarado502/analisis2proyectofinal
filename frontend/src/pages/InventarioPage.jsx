@@ -266,7 +266,7 @@ export default function InventarioPage() {
 
     setSubmittingMinimo(true);
     try {
-      await api.patch(`/productos/${productoSeleccionado.id_producto}/stock-minimo`, {
+      await api.patch(`/inventario/${productoSeleccionado.id_producto}/stock-minimo`, {
         stock_minimo: val
       });
       toast.success(`Umbral mínimo de "${productoSeleccionado.nombre}" actualizado a ${val} unidades`);
@@ -614,7 +614,7 @@ export default function InventarioPage() {
       key: 'fecha',
       render: (row) => (
         <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--toy-ink)' }}>
-          {row.fecha ? new Date(row.fecha).toLocaleString() : '-'}
+          {(row.fecha_hora || row.fecha) ? new Date(row.fecha_hora || row.fecha).toLocaleString() : '-'}
         </div>
       )
     },
@@ -674,7 +674,7 @@ export default function InventarioPage() {
       header: 'Cantidad',
       key: 'cantidad',
       render: (row) => {
-        const isPositive = Number(row.cantidad) > 0;
+        const isPositive = row.tipo_movimiento !== 'SALIDA' && Number(row.cantidad) > 0;
         return (
           <span
             style={{
@@ -683,7 +683,7 @@ export default function InventarioPage() {
               color: isPositive ? '#16a34a' : 'var(--toy-red)'
             }}
           >
-            {isPositive ? `+${row.cantidad}` : row.cantidad} uds
+            {isPositive ? `+${Math.abs(Number(row.cantidad))}` : `-${Math.abs(Number(row.cantidad))}`} uds
           </span>
         );
       }
@@ -731,7 +731,7 @@ export default function InventarioPage() {
       key: 'usuario_nombre',
       render: (row) => (
         <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--toy-ink)' }}>
-          {row.usuario_nombre || 'Sistema'}
+          {row.usuario || row.usuario_nombre || 'Sistema'}
         </span>
       )
     }

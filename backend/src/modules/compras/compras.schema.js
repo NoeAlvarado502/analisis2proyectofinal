@@ -37,11 +37,22 @@ export const createCompraSchema = z.object({
     .transform(v => (v && v.trim() ? v.trim() : null)),
   id_proveedor: z.coerce.number().int().positive('El proveedor es obligatorio'),
   observaciones: optionalObservaciones,
-  detalles: z.array(itemDetalleSchema).min(1, 'Debe incluir al menos un producto en el detalle'),
+  detalles: z
+    .array(itemDetalleSchema)
+    .min(1, 'Debe incluir al menos un producto en el detalle')
+    .refine((items) => new Set(items.map((i) => i.id_producto)).size === items.length, {
+      message: 'No se permiten productos duplicados en el detalle'
+    }),
   recibir_inmediatamente: z.boolean().optional().default(false)
 });
 
 export const updateCompraSchema = z.object({
   observaciones: optionalObservaciones,
-  detalles: z.array(itemDetalleSchema).min(1, 'Debe incluir al menos un producto en el detalle').optional()
+  detalles: z
+    .array(itemDetalleSchema)
+    .min(1, 'Debe incluir al menos un producto en el detalle')
+    .refine((items) => new Set(items.map((i) => i.id_producto)).size === items.length, {
+      message: 'No se permiten productos duplicados en el detalle'
+    })
+    .optional()
 });

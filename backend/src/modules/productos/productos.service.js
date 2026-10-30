@@ -50,6 +50,25 @@ export class ProductosService {
       [...params, limit, offset]
     );
 
+    if (rows.length > 0) {
+      const ids = rows.map((r) => r.id_producto);
+      const placeholders = ids.map(() => '?').join(',');
+      const [escalasRows] = await pool.execute(
+        `SELECT id_producto, id_escala, cantidad_minima, precio_unitario, activo
+         FROM escalas_precio
+         WHERE id_producto IN (${placeholders}) AND activo = 1
+         ORDER BY cantidad_minima ASC`,
+        ids
+      );
+      const mapEscalas = new Map();
+      for (const e of escalasRows) {
+        if (!mapEscalas.has(e.id_producto)) mapEscalas.set(e.id_producto, []);
+        mapEscalas.get(e.id_producto).push(e);
+      }
+      for (const r of rows) {
+        r.escalas = mapEscalas.get(r.id_producto) || [];
+      }
+    }
     return {
       data: rows,
       meta: {

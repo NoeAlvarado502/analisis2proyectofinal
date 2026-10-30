@@ -146,9 +146,10 @@ export class PedidosService {
               pr.codigo_sku, pr.nombre AS producto_nombre,
               pd.id_escala_aplicada, ep.cantidad_minima AS escala_cantidad_minima,
               pd.cantidad, pd.precio_escala, pd.porcentaje_descuento_extra,
-              pd.monto_descuento_extra, pd.subtotal
+              pd.monto_descuento_extra, pd.subtotal, COALESCE(i.stock_actual, 0) AS stock_actual
        FROM pedidos_detalle pd
        JOIN productos pr ON pr.id_producto = pd.id_producto
+       LEFT JOIN inventario i ON i.id_producto = pd.id_producto
        LEFT JOIN escalas_precio ep ON ep.id_escala = pd.id_escala_aplicada
        WHERE pd.id_pedido = ?
        ORDER BY pd.id_pedido_detalle ASC`,
@@ -170,6 +171,20 @@ export class PedidosService {
     }
 
     // Validar cliente existente y activo
+    const [cfgRows] = await pool.execute(
+      `SELECT valor FROM configuraciones WHERE clave = 'DESCUENTO_MAX_SIN_AUTORIZACION'`
+    );
+    const descMax = cfgRows.length > 0 ? parseFloat(cfgRows[0].valor) : 10.0;
+    if (
+      Array.isArray(detalles) &&
+      detalles.some((d) => Number(d.porcentaje_descuento_extra || 0) > descMax) &&
+      (!motivo_descuento_especial || !String(motivo_descuento_especial).trim())
+    ) {
+      const err = new Error(`El descuento supera el límite configurado (${descMax}%). Es obligatorio indicar el motivo del descuento especial`);
+      err.statusCode = 422;
+      err.code = 'VALIDATION_ERROR';
+      throw err;
+    }
     const [clienteRows] = await pool.execute(
       'SELECT activo FROM clientes WHERE id_cliente = ?',
       [id_cliente]
@@ -190,11 +205,30 @@ export class PedidosService {
     }
 
     const insertId = await withUser(currentUserId, async (conn) => {
+      if (!numero_pedido || typeof numero_pedido !== 'string' || numero_pedido.trim() === '') {
+        const [pedRows] = await conn.execute(
+          `SELECT numero_pedido FROM pedidos WHERE numero_pedido REGEXP '^PED-[0-9]+$' ORDER BY CAST(SUBSTRING(numero_pedido, 5) AS UNSIGNED) DESC LIMIT 1 FOR UPDATE`
+        );
+        let nextPed = 1;
+        if (pedRows.length > 0) {
+          const match = pedRows[0].numero_pedido.match(/^PED-(\d+)$/i);
+          if (match) nextPed = parseInt(match[1], 10) + 1;
+        }
+        finalNumero = `PED-${String(nextPed).padStart(4, '0')}`;
+      }
       const [pedidoRes] = await conn.execute(
         `INSERT INTO pedidos (numero_pedido, id_cliente, id_usuario_vendedor, observaciones, motivo_descuento_especial)
          VALUES (?, ?, ?, ?, ?)`,
         [finalNumero, id_cliente, currentUserId, observaciones || null, motivo_descuento_especial || null]
       );
+      /*
+        `INSERT INTO pedidos (numero_pedido, id_cliente, id_usuario_vendedor, observaciones, motivo_descuento_especial)
+         VALUES (?, ?, ?, ?, ?)`,
+        [finalNumero, id_cliente, currentUserId, observaciones || null, motivo_descuento_especial || null]
+      );
+      /*
+      );
+      */
       const pedidoId = pedidoRes.insertId;
 
       for (const item of detalles) {
@@ -229,6 +263,21 @@ export class PedidosService {
     }
 
     await withUser(currentUserId, async (conn) => {
+      // Validar descuento contra configuración dinámica
+      const [cfgRows] = await conn.execute(
+        `SELECT valor FROM configuraciones WHERE clave = 'DESCUENTO_MAX_SIN_AUTORIZACION'`
+      );
+      const descMax = cfgRows.length > 0 ? parseFloat(cfgRows[0].valor) : 10.0;
+      const lineasValidar = detalles && detalles.length > 0 ? detalles : pedido.detalles || [];
+      if (
+        lineasValidar.some((d) => Number(d.porcentaje_descuento_extra || 0) > descMax) &&
+        (!motivo_descuento_especial || !String(motivo_descuento_especial).trim())
+      ) {
+        const err = new Error(`El descuento supera el límite configurado (${descMax}%). Es obligatorio indicar el motivo del descuento especial`);
+        err.statusCode = 422;
+        err.code = 'VALIDATION_ERROR';
+        throw err;
+      }
       await conn.execute(
         `UPDATE pedidos SET observaciones = ?, motivo_descuento_especial = ? WHERE id_pedido = ?`,
         [observaciones || null, motivo_descuento_especial || null, id]
@@ -252,7 +301,7 @@ export class PedidosService {
   /**
    * Transiciona el pedido de CREADO a APROBADO o PENDIENTE_APROBACION mediante sp_enviar_pedido
    */
-  static async enviar(id, currentUserId, ip = null) {
+  static async enviar(id, currentUserId, ip = null, motivo_descuento_especial = undefined) {
     const pedido = await this.obtenerPorId(id);
 
     if (pedido.estado !== 'CREADO') {
@@ -263,6 +312,29 @@ export class PedidosService {
     }
 
     await withUser(currentUserId, async (conn) => {
+      const [cfgRows] = await conn.execute(
+        `SELECT valor FROM configuraciones WHERE clave = 'DESCUENTO_MAX_SIN_AUTORIZACION'`
+      );
+      const descMax = cfgRows.length > 0 ? parseFloat(cfgRows[0].valor) : 10;
+      const requiereNota = (pedido.detalles || []).some((d) => Number(d.porcentaje_descuento_extra || 0) > descMax);
+      const finalMotivo =
+        motivo_descuento_especial !== undefined && String(motivo_descuento_especial).trim() !== ''
+          ? String(motivo_descuento_especial).trim()
+          : pedido.motivo_descuento_especial;
+
+      if (requiereNota && (!finalMotivo || String(finalMotivo).trim().length < 5)) {
+        const err = new Error('Debe ingresar una justificación cuando el descuento supera el porcentaje máximo permitido');
+        err.statusCode = 422;
+        err.code = 'VALIDATION_ERROR';
+        throw err;
+      }
+
+      if (motivo_descuento_especial !== undefined && String(motivo_descuento_especial).trim() !== '') {
+        await conn.execute('UPDATE pedidos SET motivo_descuento_especial = ? WHERE id_pedido = ?', [
+          String(motivo_descuento_especial).trim(),
+          id
+        ]);
+      }
       await conn.execute('CALL sp_enviar_pedido(?)', [id]);
     }, ip);
 

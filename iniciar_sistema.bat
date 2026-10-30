@@ -27,7 +27,7 @@ echo [2/3] Abriendo la aplicacion en tu navegador Apache...
 start http://localhost/jugueteria/
 
 echo.
-echo [3/3] Iniciando el Backend API (Node.js + Express en puerto 4000)...
+echo [3/3] Iniciando el Backend API (Node.js + Express en puerto 3000)...
 echo.
 echo   --------------------------------------------------------------
 echo   URL Local:     http://localhost/jugueteria/
@@ -36,7 +36,7 @@ for /f "tokens=4" %%a in ('route print ^| findstr 0.0.0.0.*0.0.0.0 ^| findstr /v
     goto :ip_done
 )
 :ip_done
-echo   Backend API:   Puerto 4000
+echo   Backend API:   Puerto 3000
 echo   Usuario demo:  admin
 echo   Contrasena:    admin
 echo   --------------------------------------------------------------

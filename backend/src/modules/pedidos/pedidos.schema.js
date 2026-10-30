@@ -32,14 +32,25 @@ export const createPedidoSchema = z.object({
   id_cliente: z.coerce.number().int().positive('El cliente es obligatorio'),
   observaciones: optionalText,
   motivo_descuento_especial: optionalText,
-  detalles: z.array(itemDetallePedidoSchema).min(1, 'Debe incluir al menos un producto en el pedido'),
+  detalles: z
+    .array(itemDetallePedidoSchema)
+    .min(1, 'Debe incluir al menos un producto en el pedido')
+    .refine((items) => new Set(items.map((i) => i.id_producto)).size === items.length, {
+      message: 'No se permiten productos duplicados en el detalle'
+    }),
   enviar_inmediatamente: z.boolean().optional().default(false)
 });
 
 export const updatePedidoSchema = z.object({
   observaciones: optionalText,
   motivo_descuento_especial: optionalText,
-  detalles: z.array(itemDetallePedidoSchema).min(1, 'Debe incluir al menos un producto en el pedido').optional()
+  detalles: z
+    .array(itemDetallePedidoSchema)
+    .min(1, 'Debe incluir al menos un producto en el pedido')
+    .refine((items) => new Set(items.map((i) => i.id_producto)).size === items.length, {
+      message: 'No se permiten productos duplicados en el detalle'
+    })
+    .optional()
 });
 
 export const autorizarPedidoSchema = z.object({

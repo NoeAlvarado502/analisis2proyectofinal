@@ -222,7 +222,7 @@ export default function VentasPage() {
     await fetchPedidosAprobados();
     setConPagoInicial(false);
 
-    if (preselectedPedido) {
+    if (preselectedPedido && preselectedPedido.id_pedido) {
       setSelectedPedidoId(String(preselectedPedido.id_pedido));
       setSelectedPedidoInfo(preselectedPedido);
       setPagosIniciales([

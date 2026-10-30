@@ -339,7 +339,8 @@ export default function ProductosPage() {
         setPrecioVenta(baseVal);
         if (baseVal && parseFloat(baseVal) > 0) {
           const calculadas = calcularEscalasAutomaticas(parseFloat(baseVal), 'estandar');
-          setEscalasState(calculadas || tiersMap);
+          const tieneEscalasGuardadas = Array.isArray(p.escalas) && p.escalas.some((esc) => Number(esc.cantidad_minima) > 1);
+          setEscalasState(tieneEscalasGuardadas ? tiersMap : (calculadas || tiersMap));
         } else {
           setEscalasState(tiersMap);
         }

@@ -244,7 +244,13 @@ export default function PedidosPage() {
   const handleOpenEdit = async (pedidoItem) => {
     try {
       setLoading(true);
-      const res = await api.get(`/pedidos/${pedidoItem.id_pedido}`);
+      const [res, sugRes] = await Promise.all([
+        api.get(`/pedidos/${pedidoItem.id_pedido}`),
+        api.get('/pedidos/sugerir-numero').catch(() => null)
+      ]);
+      if (sugRes?.data?.descuento_max_sin_autorizacion !== undefined) {
+        setDescuentoMaxConfig(parseFloat(sugRes.data.descuento_max_sin_autorizacion));
+      }
       const fullPedido = res.data;
 
       if (fullPedido.estado !== 'CREADO') {
@@ -271,7 +277,7 @@ export default function PedidosPage() {
         porcentaje_descuento_extra: parseFloat(d.porcentaje_descuento_extra || 0),
         monto_descuento_extra: parseFloat(d.monto_descuento_extra || 0),
         subtotal: parseFloat(d.subtotal),
-        stock_actual: 9999
+        stock_actual: d.stock_actual ?? productosActivos.find((p) => Number(p.id_producto) === Number(d.id_producto))?.stock_actual ?? 9999
       }));
 
       setDetallesList(mappedDetalles);
@@ -292,7 +298,13 @@ export default function PedidosPage() {
     setLoadingDetail(true);
     setSelectedPedido(null);
     try {
-      const res = await api.get(`/pedidos/${pedidoItem.id_pedido}`);
+      const [res, sugRes] = await Promise.all([
+        api.get(`/pedidos/${pedidoItem.id_pedido}`),
+        api.get('/pedidos/sugerir-numero').catch(() => null)
+      ]);
+      if (sugRes?.data?.descuento_max_sin_autorizacion !== undefined) {
+        setDescuentoMaxConfig(parseFloat(sugRes.data.descuento_max_sin_autorizacion));
+      }
       setSelectedPedido(res.data);
     } catch (err) {
       toast.error(err.message || 'Error al cargar detalle del pedido');
@@ -358,7 +370,31 @@ export default function PedidosPage() {
     }
 
     const prodId = parseInt(itemInput.id_producto, 10);
-    const yaExiste = detallesList.some((d) => d.id_producto === prodId);
+    const yaExiste = false;
+    const existingIdx = detallesList.findIndex((d) => Number(d.id_producto) === prodId);
+    if (existingIdx !== -1) {
+      const nuevaCant = detallesList[existingIdx].cantidad + cant;
+      if (nuevaCant > stockDisponible) {
+        toast.error(`Inventario insuficiente. Solo hay ${stockDisponible} unidades`);
+        return;
+      }
+      const { precioUnitario: nuevoPrecio, escalaNivel: nuevoNivel } = getEscalaInfo(selectedProdInfo, nuevaCant);
+      const nuevoMontoDesc = Math.round(nuevaCant * nuevoPrecio * (descPct / 100) * 100) / 100;
+      const nuevoSubtotal = Math.round((nuevaCant * nuevoPrecio - nuevoMontoDesc) * 100) / 100;
+      const copia = [...detallesList];
+      copia[existingIdx] = {
+        ...copia[existingIdx],
+        cantidad: nuevaCant,
+        precio_escala: nuevoPrecio,
+        escala_nivel: nuevoNivel,
+        porcentaje_descuento_extra: descPct,
+        monto_descuento_extra: nuevoMontoDesc,
+        subtotal: nuevoSubtotal
+      };
+      setDetallesList(copia);
+      setItemInput({ id_producto: '', cantidad: 1, porcentaje_descuento_extra: 0 });
+      return;
+    }
     if (yaExiste) {
       toast.error('Este producto ya fue agregado al pedido. Si deseas modificarlo, elimínalo y vuelve a añadirlo.');
       return;
@@ -433,7 +469,7 @@ export default function PedidosPage() {
 
     if (totalesCalculados.tieneDescuentoMayor && !formData.motivo_descuento_especial?.trim()) {
       setFormErrors({
-        motivo_descuento_especial: 'El descuento supera el 10%. Es obligatorio indicar el motivo del descuento especial'
+        motivo_descuento_especial: `El descuento supera el ${descuentoMaxConfig}%. Es obligatorio indicar el motivo del descuento especial`
       });
       toast.error('Indica el motivo del descuento especial superior al límite.');
       return;

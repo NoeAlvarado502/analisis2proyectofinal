@@ -182,6 +182,17 @@ export class VentasService {
     }
 
     const insertId = await withUser(currentUserId, async (conn) => {
+      if (!numero_factura || typeof numero_factura !== 'string' || numero_factura.trim() === '') {
+        const [facRows] = await conn.execute(
+          `SELECT numero_factura FROM ventas WHERE numero_factura REGEXP '^FAC-[0-9]+$' ORDER BY CAST(SUBSTRING(numero_factura, 5) AS UNSIGNED) DESC LIMIT 1 FOR UPDATE`
+        );
+        let nextFac = 1;
+        if (facRows.length > 0) {
+          const match = facRows[0].numero_factura.match(/^FAC-(\d+)$/i);
+          if (match) nextFac = parseInt(match[1], 10) + 1;
+        }
+        finalFactura = `FAC-${String(nextFac).padStart(4, '0')}`;
+      }
       const [ventaRes] = await conn.execute(
         `INSERT INTO ventas (numero_factura, id_pedido, id_usuario)
          VALUES (?, ?, ?)`,
@@ -191,7 +202,7 @@ export class VentasService {
 
       if (listaPagos.length > 0) {
         const [recRows] = await conn.execute(
-          `SELECT numero_recibo FROM pagos WHERE numero_recibo LIKE 'REC-%' ORDER BY id_pago DESC LIMIT 1`
+          `SELECT numero_recibo FROM pagos WHERE numero_recibo REGEXP '^REC-[0-9]+$' ORDER BY CAST(SUBSTRING(numero_recibo, 5) AS UNSIGNED) DESC LIMIT 1 FOR UPDATE`
         );
         let nextRec = 1;
         if (recRows.length > 0) {

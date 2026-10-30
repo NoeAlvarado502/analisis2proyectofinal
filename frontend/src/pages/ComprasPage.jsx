@@ -171,11 +171,11 @@ export default function ComprasPage() {
     setFormData({
       numero_comprobante: comprobanteSugerido,
       id_proveedor: provId,
-      observaciones: prefillItem ? `Abastecimiento de stock por alerta crítica (${prefillItem.producto_nombre})` : '',
+      observaciones: (prefillItem && prefillItem.id_producto) ? `Abastecimiento de stock por alerta crítica (${prefillItem.producto_nombre})` : '',
       recibir_inmediatamente: false
     });
 
-    if (prefillItem) {
+    if (prefillItem && prefillItem.id_producto) {
       let costoSug = '';
       try {
         const costRes = await api.get(`/compras/ultimo-costo/${prefillItem.id_producto}`);
@@ -601,7 +601,7 @@ export default function ComprasPage() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={handleOpenCreate}
+                onClick={() => handleOpenCreate(null)}
                 title="Nueva compra"
                 aria-label="Nueva compra"
                 style={{

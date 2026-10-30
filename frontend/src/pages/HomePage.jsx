@@ -631,7 +631,7 @@ export default function HomePage() {
                           fill="var(--toy-blue)"
                           style={{ transition: 'all 0.2s ease' }}
                         >
-                          <title>{`${item.mes}: Q${monto.toFixed(2)} (${item.cantidad_ventas || 0} ventas)`}</title>
+                          <title>{`${item.mes}: Q${monto.toFixed(2)} (${item.ventas ?? item.cantidad_ventas ?? 0} ventas)`}</title>
                         </rect>
                         <text x={x + 13} y="148" textAnchor="middle" fontSize="10" fill="var(--toy-muted)" fontWeight="700">
                           {label}
@@ -830,7 +830,7 @@ export default function HomePage() {
                           {ped.numero_pedido}
                         </div>
                         <div style={{ fontSize: '0.74rem', color: 'var(--toy-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {ped.cliente_nombre || 'Cliente'}
+                          {ped.cliente || ped.cliente_nombre || 'Cliente'}
                         </div>
                       </div>
 

@@ -169,6 +169,7 @@ describe('Sprint 4: Suite de Pruebas E2E - Dashboard, Reportes Financieros/Opera
       .send({
         id_cliente: testClienteId,
         observaciones: 'Pedido para cliente mayorista con descuento especial',
+        motivo_descuento_especial: 'Promoción especial aprobada por gerencia de ventas',
         detalles: [
           {
             id_producto: testProductoId,

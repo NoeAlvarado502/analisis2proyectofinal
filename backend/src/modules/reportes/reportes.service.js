@@ -58,9 +58,9 @@ export class ReportesService {
       const desc = parseFloat(r.descuento) || 0;
       const saldo = parseFloat(r.saldo_pendiente) || 0;
 
-      total_ventas += tot;
-      total_descuentos += desc;
-      total_saldo_pendiente += saldo;
+      if (r.estado !== 'ANULADA') { total_ventas += tot; total_descuentos += desc; total_saldo_pendiente += saldo; }
+      // acumulados ya sumados arriba si estado !== 'ANULADA'
+
 
       if (r.estado === 'COMPLETADA') {
         total_facturado_completadas += tot;
@@ -251,6 +251,7 @@ export class ReportesService {
 
     let total_entradas = 0;
     let total_salidas = 0;
+    let total_ajustes = 0;
 
     for (const r of rows) {
       const cant = Number(r.cantidad) || 0;
@@ -259,6 +260,7 @@ export class ReportesService {
       } else if (r.tipo_movimiento === 'SALIDA') {
         total_salidas += cant;
       } else if (r.tipo_movimiento === 'AJUSTE') {
+        total_ajustes += 1;
         if (cant > 0) {
           total_entradas += cant;
         } else {
@@ -320,6 +322,7 @@ export class ReportesService {
       kpis: {
         total_entradas,
         total_salidas,
+        total_ajustes,
         variacion_neta,
         total_movimientos
       },
@@ -578,7 +581,7 @@ export class ReportesService {
 
     for (const r of rows) {
       const tot = parseFloat(r.total) || 0;
-      total_monto_general += tot;
+      if (r.estado !== 'ANULADA' && r.estado !== 'CANCELADA') total_monto_general += tot;
 
       if (r.estado === 'RECIBIDA') {
         monto_recibidas += tot;

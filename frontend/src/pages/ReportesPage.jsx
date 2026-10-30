@@ -143,6 +143,7 @@ export default function ReportesPage() {
   const [kardexCategoriaId, setKardexCategoriaId] = useState('');
   const [kardexTipoMovimiento, setKardexTipoMovimiento] = useState('');
   const [kardexCategoriasList, setKardexCategoriasList] = useState([]);
+  const [kardexProductosList, setKardexProductosList] = useState([]);
 
   // Tab 2: Valoración CPP
   const [valoracionData, setValoracionData] = useState([]);
@@ -192,8 +193,8 @@ export default function ReportesPage() {
     async function loadCatalogs() {
       try {
         const [catRes, marRes, provRes] = await Promise.all([
-          api.get('/productos/catalogo/categorias').catch(() => null),
-          api.get('/productos/catalogo/marcas').catch(() => null),
+          api.get('/categorias').catch(() => null),
+          api.get('/marcas').catch(() => null),
           api.get('/proveedores?limit=100').catch(() => null)
         ]);
         if (catRes?.data) {
@@ -225,6 +226,7 @@ export default function ReportesPage() {
       if (res?.data) {
         setKardexData(res.data.filas || []);
         if (res.data.kpis) setKardexKpis(res.data.kpis);
+        if (res.data.metadatos?.productos) setKardexProductosList(res.data.metadatos.productos);
       }
     } catch (err) {
       toast.error(err.message || 'Error al cargar reporte de Kardex');
@@ -519,6 +521,7 @@ export default function ReportesPage() {
     let tot = 0;
     let sal = 0;
     for (const v of ventasData) {
+      if (v.estado === 'ANULADA') continue;
       sub += parseFloat(v.subtotal) || 0;
       desc += parseFloat(v.descuento) || 0;
       tot += parseFloat(v.total) || 0;
@@ -531,6 +534,7 @@ export default function ReportesPage() {
   const comprasTotalesFooter = useMemo(() => {
     let tot = 0;
     for (const c of comprasData) {
+      if (c.estado === 'ANULADA') continue;
       tot += parseFloat(c.total) || 0;
     }
     return { total: tot };
@@ -677,15 +681,16 @@ export default function ReportesPage() {
                   <div style={{ width: '220px' }}>
                     <SearchableSelect
                       placeholder="Todos los productos"
-                      endpoint="/productos"
-                      labelKey="nombre"
-                      valueKey="id_producto"
+                      options={kardexProductosList.map((p) => ({
+                        value: String(p.id_producto),
+                        label: p.nombre,
+                        sublabel: p.codigo_sku
+                      }))}
                       value={kardexProductoId}
                       onChange={(val, item) => {
                         setKardexProductoId(val || '');
                         setKardexSelectedProduct(item || null);
                       }}
-                      secondaryKey="codigo_sku"
                     />
                   </div>
 
@@ -873,11 +878,11 @@ export default function ReportesPage() {
                 </div>
                 <div style={{ padding: '0.6rem 0.8rem', backgroundColor: '#FAF8F5', borderRadius: '10px', border: '1px solid var(--toy-border-light)' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--toy-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Utilidad Potencial</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--toy-green-dark)', fontFamily: 'var(--font-display)' }}>{formatMoney(valoracionKpis.utilidad_potencial_total)}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--toy-green-dark)', fontFamily: 'var(--font-display)' }}>{formatMoney(valoracionKpis.margen_bruto_potencial ?? valoracionKpis.utilidad_potencial_total)}</div>
                 </div>
                 <div style={{ padding: '0.6rem 0.8rem', backgroundColor: '#FAF8F5', borderRadius: '10px', border: '1px solid var(--toy-border-light)' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--toy-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Margen Promedio</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--toy-orange-dark)', fontFamily: 'var(--font-display)' }}>{valoracionKpis.margen_promedio_ponderado}%</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--toy-orange-dark)', fontFamily: 'var(--font-display)' }}>{valoracionKpis.porcentaje_margen_global ?? valoracionKpis.margen_promedio_ponderado ?? 0}%</div>
                 </div>
               </>
             )}

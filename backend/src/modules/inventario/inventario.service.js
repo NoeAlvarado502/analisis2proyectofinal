@@ -173,8 +173,8 @@ export class InventarioService {
         const [rows] = await conn.execute(
           `SELECT documento_id
            FROM movimientos_inventario
-           WHERE documento_id LIKE CONCAT(?, '-%')
-           ORDER BY id_movimiento DESC
+           WHERE documento_id REGEXP CONCAT('^', ?, '-[0-9]+$')
+           ORDER BY CAST(SUBSTRING_INDEX(documento_id, '-', -1) AS UNSIGNED) DESC
            LIMIT 1
            FOR UPDATE`,
           [prefijo]

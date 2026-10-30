@@ -174,6 +174,17 @@ export class ComprasService {
     }
 
     const insertId = await withUser(currentUserId, async (conn) => {
+      if (!numero_comprobante || typeof numero_comprobante !== 'string' || numero_comprobante.trim() === '') {
+        const [compRows] = await conn.execute(
+          `SELECT numero_comprobante FROM compras WHERE numero_comprobante REGEXP '^COMP-[0-9]+$' ORDER BY CAST(SUBSTRING(numero_comprobante, 6) AS UNSIGNED) DESC LIMIT 1 FOR UPDATE`
+        );
+        let nextComp = 1;
+        if (compRows.length > 0) {
+          const match = compRows[0].numero_comprobante.match(/^COMP-(\d+)$/i);
+          if (match) nextComp = parseInt(match[1], 10) + 1;
+        }
+        finalComprobante = `COMP-${String(nextComp).padStart(4, '0')}`;
+      }
       const [compraRes] = await conn.execute(
         `INSERT INTO compras (numero_comprobante, id_proveedor, id_usuario, observaciones)
          VALUES (?, ?, ?, ?)`,

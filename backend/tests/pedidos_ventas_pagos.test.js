@@ -203,6 +203,7 @@ describe('Sprint 3: Pedidos, Estados, Aprobaciones de Descuento, Ventas, Pagos, 
       .send({
         id_cliente: testClienteId,
         observaciones: 'Pedido con 15% de descuento especial',
+        motivo_descuento_especial: 'Solicitud de descuento por volumen mayorista',
         detalles: [
           { id_producto: testProductoId, cantidad: 6, porcentaje_descuento_extra: 15 }
         ]
@@ -256,6 +257,7 @@ describe('Sprint 3: Pedidos, Estados, Aprobaciones de Descuento, Ventas, Pagos, 
       .send({
         id_cliente: testClienteId,
         enviar_inmediatamente: true,
+        motivo_descuento_especial: 'Solicitud de descuento especial 20%',
         detalles: [{ id_producto: testProductoId, cantidad: 3, porcentaje_descuento_extra: 20 }]
       });
     expect(resPend.status).toBe(201);
